@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t2med/widgets/input_decorations.dart';
-
+import 'package:t2med/pages/registration_page.dart';
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
@@ -115,7 +115,7 @@ class LoginPage extends StatelessWidget {
                             print('Login correcto ✅');
                             // Aquí iría tu lógica de login real
                           } else {
-                            print('Cr4edenciales inválidas');
+                            print('Credenciales inválidas');
                           }
                         },
                       ),
@@ -127,10 +127,21 @@ class LoginPage extends StatelessWidget {
             ),
           ),
           SizedBox(height: 100),
-          Text(
-            'Crear una nueva cuenta',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          TextButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RegistrationPage(),
+      ),
+    );
+  },
+  child: const Text(
+    "Crear una nueva cuenta",
+    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+  ),
+),
+
         ],
       ),
     );
