@@ -119,9 +119,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Contraseña', hintText: '********', prefixIcon: Icon(Icons.lock_outline)),
                 validator: (value) {
-                  if (value == null || value.length < 8) return 'Debe tener al menos 8 caracteres';
-                  if (!value.contains(RegExp(r'[A-Z]'))) return 'Debe contener una mayúscula';
-                  if (!value.contains(RegExp(r'[0-9]'))) return 'Debe contener un número';
+                  if (value == null || value.length < 8) return 'Debe tener al menos 8 caracteres, una mayúscula y un número';
+                  if (!value.contains(RegExp(r'[A-Z]'))) return 'Debe tener al menos 8 caracteres, una mayúscula y un número';
+                  if (!value.contains(RegExp(r'[0-9]'))) return 'Debe tener al menos 8 caracteres, una mayúscula y un número';
                   return null;
                 },
               ),
@@ -147,7 +147,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 onPressed: () async {
                   FocusScope.of(context).unfocus();
                   if (!_formKey.currentState!.validate()) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Complete los campos obligatorios')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, complete todos los campos correctamente')));
                     return;
                   }
                   

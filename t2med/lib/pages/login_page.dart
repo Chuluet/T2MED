@@ -96,8 +96,17 @@ class _LoginPageState extends State<LoginPage> {
                                   prefixIcon: const Icon(Icons.lock_outline),
                                 ),
                                 validator: (value) {
-                                  if (value != null && value.isNotEmpty) return null;
-                                  return "La contraseña es obligatoria";
+                                  if (value == null || value.isEmpty) {
+                                    return "La contraseña es obligatoria";
+                                  }
+                                  // Validar mínimo 8 caracteres, al menos una mayúscula y un número
+                                  final hasMinLength = value.length >= 8;
+                                  final hasUppercase = value.contains(RegExp(r'[A-Z]'));
+                                  final hasNumber = value.contains(RegExp(r'[0-9]'));
+                                  if (!hasMinLength || !hasUppercase || !hasNumber) {
+                                    return "Credenciales invalidas";
+                                  }
+                                  return null;
                                 },
                               ),
                               const SizedBox(height: 50),
@@ -114,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
 
                                   if (!_formKey.currentState!.validate()) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Por favor, revise los campos')),
+                                      const SnackBar(content: Text('Complete todos los campos')),
                                     );
                                     return;
                                   }
