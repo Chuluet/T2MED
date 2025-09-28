@@ -147,7 +147,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 onPressed: () async {
                   FocusScope.of(context).unfocus();
                   if (!_formKey.currentState!.validate()) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, corrige los errores')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Complete los campos obligatorios')));
                     return;
                   }
                   
