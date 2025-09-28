@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:t2med/services/user_service.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -11,13 +12,24 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController(); // Nuevo
+  final TextEditingController _phoneController = TextEditingController(); // Nuevo
+  final TextEditingController _emergencyPhoneController = TextEditingController(); // Nuevo
+
+  final userService = UserService();
 
   @override
   void dispose() {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _emailController.dispose();
+    _nameController.dispose();
+    _lastNameController.dispose(); // Nuevo
+    _phoneController.dispose(); // Nuevo
+    _emergencyPhoneController.dispose(); // Nuevo
     super.dispose();
   }
 
@@ -35,49 +47,66 @@ class _RegistrationPageState extends State<RegistrationPage> {
             children: [
               // Nombre
               TextFormField(
+                controller: _nameController,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre',
-                  hintText: 'Juan',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-                validator: (value) =>
-                    (value == null || value.isEmpty) ? 'Credenciales inválidas' : null,
+                decoration: const InputDecoration(labelText: 'Nombre', hintText: 'Juan', prefixIcon: Icon(Icons.person_outline)),
+                validator: (value) => (value == null || value.isEmpty) ? 'El nombre es obligatorio' : null,
               ),
               const SizedBox(height: 20),
 
-              // Apellido
+              // Apellido (Nuevo)
               TextFormField(
+                controller: _lastNameController,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Apellido',
-                  hintText: 'Pérez',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-                validator: (value) =>
-                    (value == null || value.isEmpty) ? 'Credenciales inválidas' : null,
+                decoration: const InputDecoration(labelText: 'Apellido', hintText: 'Pérez', prefixIcon: Icon(Icons.person_outline)),
+                validator: (value) => (value == null || value.isEmpty) ? 'El apellido es obligatorio' : null,
               ),
               const SizedBox(height: 20),
 
               // Correo
               TextFormField(
+                controller: _emailController,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Correo electrónico',
-                  hintText: 'ejemplo@gmail.com',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
+                decoration: const InputDecoration(labelText: 'Correo electrónico', hintText: 'ejemplo@gmail.com', prefixIcon: Icon(Icons.email_outlined)),
                 validator: (value) {
-                  String pattern =
-                      r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
+                  String pattern = r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
                   RegExp regExp = RegExp(pattern);
-                  return regExp.hasMatch(value ?? '')
-                      ? null
-                      : 'Credenciales inválidas';
+                  return regExp.hasMatch(value ?? '') ? null : 'El formato del correo no es válido';
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Teléfono (Nuevo)
+              TextFormField(
+                controller: _phoneController,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                textInputAction: TextInputAction.next,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Teléfono de contacto', hintText: '3001234567', prefixIcon: Icon(Icons.phone)),
+                validator: (value) {
+                  String pattern = r'^[0-9]{10}$'; // 10 dígitos
+                  RegExp regExp = RegExp(pattern);
+                  return regExp.hasMatch(value ?? '') ? null : 'Debe ser un número de 10 dígitos';
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Teléfono de Emergencia (Nuevo)
+              TextFormField(
+                controller: _emergencyPhoneController,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                textInputAction: TextInputAction.next,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Teléfono de emergencia (opcional)', hintText: '3009876543', prefixIcon: Icon(Icons.phone_in_talk)),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null; // Opcional
+                  String pattern = r'^[0-9]{10}$';
+                  RegExp regExp = RegExp(pattern);
+                  return regExp.hasMatch(value) ? null : 'Debe ser un número de 10 dígitos';
                 },
               ),
               const SizedBox(height: 20),
@@ -88,17 +117,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 controller: _passwordController,
                 textInputAction: TextInputAction.next,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Contraseña',
-                  hintText: '********',
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
+                decoration: const InputDecoration(labelText: 'Contraseña', hintText: '********', prefixIcon: Icon(Icons.lock_outline)),
                 validator: (value) {
-                  String pattern = r'^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$';
-                  RegExp regExp = RegExp(pattern);
-                  if (!regExp.hasMatch(value ?? '')) {
-                    return 'Credenciales inválidas';
-                  }
+                  if (value == null || value.length < 8) return 'Debe tener al menos 8 caracteres';
+                  if (!value.contains(RegExp(r'[A-Z]'))) return 'Debe contener una mayúscula';
+                  if (!value.contains(RegExp(r'[0-9]'))) return 'Debe contener un número';
                   return null;
                 },
               ),
@@ -108,60 +131,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
               TextFormField(
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 controller: _confirmPasswordController,
-                textInputAction: TextInputAction.next,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirmar Contraseña',
-                  hintText: '********',
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
-                validator: (value) {
-                  if (value != _passwordController.text) {
-                    return 'Credenciales inválidas';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Teléfono
-              TextFormField(
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Teléfono de contacto',
-                  hintText: '3001234567',
-                  prefixIcon: Icon(Icons.phone),
-                ),
-                validator: (value) {
-                  String pattern = r'^[0-9]{10}$'; // 10 dígitos exactos
-                  RegExp regExp = RegExp(pattern);
-                  return regExp.hasMatch(value ?? '')
-                      ? null
-                      : 'Credenciales inválidas';
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Teléfono de emergencia
-              TextFormField(
-                autovalidateMode: AutovalidateMode.onUserInteraction,
                 textInputAction: TextInputAction.done,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Teléfono de emergencia (opcional)',
-                  hintText: '3009876543',
-                  prefixIcon: Icon(Icons.phone_in_talk),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return null; // opcional
-                  String pattern = r'^[0-9]{10}$';
-                  RegExp regExp = RegExp(pattern);
-                  return regExp.hasMatch(value)
-                      ? null
-                      : 'Credenciales inválidas';
-                },
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Confirmar Contraseña', hintText: '********', prefixIcon: Icon(Icons.lock_outline)),
+                validator: (value) => (value != _passwordController.text) ? 'Las contraseñas no coinciden' : null,
               ),
               const SizedBox(height: 30),
 
@@ -171,24 +144,37 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 disabledColor: Colors.grey,
                 elevation: 0,
                 color: Colors.deepPurple,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 15),
-                  child: const Text(
-                    'Registrarse',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
+                onPressed: () async {
+                  FocusScope.of(context).unfocus();
+                  if (!_formKey.currentState!.validate()) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, corrige los errores')));
+                    return;
+                  }
+                  
+                  final String? errorMessage = await userService.createUser(
+                    _emailController.text.trim(),
+                    _passwordController.text.trim(),
+                    _nameController.text.trim(),
+                    _lastNameController.text.trim(),
+                    _phoneController.text.trim(),
+                    _emergencyPhoneController.text.trim(),
+                  );
+
+                  if (errorMessage == null) {
+                    // Registro exitoso, volver a login
+                    Navigator.of(context).pop(); // Cierra la pantalla de registro
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('✅ Registro válido')),
+                      const SnackBar(content: Text('✅ ¡Registro exitoso! Por favor, inicia sesión.')),
                     );
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('❌ Credenciales inválidas')),
-                    );
+                    // Mostrar error
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
                   }
                 },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 15),
+                  child: const Text('Registrarse', style: TextStyle(color: Colors.white)),
+                ),
               ),
             ],
           ),
