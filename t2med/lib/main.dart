@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: Colors.grey[200],
       ),
-      initialRoute: 'login', // La app empieza en el login
+      initialRoute: 'home', // La app empieza en el login
       routes: {
         'login': (_) => const LoginPage(),
         'register': (_) => const RegistrationPage(),
