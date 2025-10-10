@@ -204,7 +204,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-_burbuja() {
+Container _burbuja() {
   return Container(
     width: 100,
     height: 100,
