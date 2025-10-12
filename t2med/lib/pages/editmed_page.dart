@@ -206,17 +206,40 @@ class _EditMedPageState extends State<EditMedPage> {
         child: Text(text),
       );
 
-  void _guardarCambios() {
-    final actualizado = {
-      'nombre': _medicamentoController.text,
-      'dosis': _dosisController.text,
-      'nota': _notaController.text,
-      'fechaInicio': _fechaInicio,
-      'fechaFin': _fechaFin,
-      'hora': _hora?.format(context) ?? '',
-      'color': _colors[_selectedColor],
-      'completado': widget.med['completado'] ?? false,
-    };
-    Navigator.pop(context, actualizado);
+  void _guardarCambios() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar edición'),
+        content: const Text('¿Seguro que desea guardar los cambios del medicamento?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Guardar', style: TextStyle(color: Colors.indigo)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final actualizado = {
+        'nombre': _medicamentoController.text,
+        'dosis': _dosisController.text,
+        'nota': _notaController.text,
+        'fechaInicio': _fechaInicio,
+        'fechaFin': _fechaFin,
+        'hora': _hora?.format(context) ?? '',
+        'color': _colors[_selectedColor],
+        'completado': widget.med['completado'] ?? false,
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cambios guardados')),
+      );
+      Navigator.pop(context, actualizado);
+    }
   }
 }
