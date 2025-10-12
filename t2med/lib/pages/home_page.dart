@@ -78,8 +78,28 @@ class _HomePageState extends State<HomePage> {
                             }
                             return false; // no eliminar
                           } else if (direction == DismissDirection.endToStart) {
-                            _eliminarMed(index);
-                            return true;
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Confirmar eliminación'),
+                                content: const Text('¿Seguro que desea eliminar el medicamento?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(true),
+                                    child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              _eliminarMed(index);
+                              return true;
+                            }
+                            return false;
                           }
                           return false;
                         },
