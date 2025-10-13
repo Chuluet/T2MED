@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "356929768009",
-    "project_id": "t2med-6e5de",
-    "storage_bucket": "t2med-6e5de.firebasestorage.app"
+    "project_number": "699246740449",
+    "project_id": "t2med-9a1a5",
+    "storage_bucket": "t2med-9a1a5.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:356929768009:android:ffb84492305789603a0d98",
+        "mobilesdk_app_id": "1:699246740449:android:333b783571d01dab1308a0",
         "android_client_info": {
           "package_name": "com.example.t2med"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBH2NqqFPlp4cWQ_j4d8ejcUObjrg1HvzE"
+          "current_key": "AIzaSyAu_I4xmWKstjEhUYXqaEz5whBhU7Cp3SE"
         }
       ],
       "services": {
