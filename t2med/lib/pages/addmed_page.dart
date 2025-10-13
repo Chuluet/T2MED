@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:t2med/services/addmed_service.dart';
 
 class AddmedPage extends StatefulWidget {
   const AddmedPage({super.key});
@@ -20,6 +21,8 @@ class _AddmedPageState extends State<AddmedPage> {
   int _selectedColor = 0;
 
   final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
+
+  final AddMedService addMedService = AddMedService();
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +53,8 @@ class _AddmedPageState extends State<AddmedPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _label("Medicamento"),
-              _buildInputField(_medicamentoController, 'Nombre del medicamento'),
+              _buildInputField(
+                  _medicamentoController, 'Nombre del medicamento'),
 
               _label("Dosis"),
               _buildInputField(_dosisController, 'Ej: 500 mg'),
@@ -109,7 +113,8 @@ class _AddmedPageState extends State<AddmedPage> {
                         ),
                       ),
                       child: _selectedColor == index
-                          ? const Icon(Icons.check, color: Colors.white, size: 20)
+                          ? const Icon(Icons.check, color: Colors.white,
+                          size: 20)
                           : null,
                     ),
                   );
@@ -131,7 +136,9 @@ class _AddmedPageState extends State<AddmedPage> {
                     child: const Text(
                       "Guardar",
                       style:
-                          TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      TextStyle(color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -143,11 +150,12 @@ class _AddmedPageState extends State<AddmedPage> {
     );
   }
 
-  Widget _label(String text) => Padding(
+  Widget _label(String text) =>
+      Padding(
         padding: const EdgeInsets.only(top: 18, bottom: 8),
         child: Text(text,
             style:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
       );
 
   Widget _buildInputField(TextEditingController controller, String hint) {
@@ -158,7 +166,7 @@ class _AddmedPageState extends State<AddmedPage> {
         filled: true,
         fillColor: Colors.white,
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -213,24 +221,43 @@ class _AddmedPageState extends State<AddmedPage> {
     if (picked != null) setState(() => _hora = picked);
   }
 
-  void _guardarMedicamento() {
+  void _guardarMedicamento() async {
     if (_medicamentoController.text.isEmpty || _hora == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Por favor completa los campos obligatorios')),
+        const SnackBar(
+            content: Text('⚠️ Por favor completa los campos obligatorios')),
       );
       return;
     }
 
-    final nuevoMed = {
-      'nombre': _medicamentoController.text,
-      'dosis': _dosisController.text,
-      'nota': _notaController.text,
-      'fechaInicio': _fechaInicio,
-      'fechaFin': _fechaFin,
-      'hora': _hora!.format(context),
-      'color': _colors[_selectedColor],
-    };
 
-    Navigator.pop(context, nuevoMed);
+    final error = await addMedService.addMedicine(
+      nombre: _medicamentoController.text,
+      dosis: _dosisController.text,
+      nota: _notaController.text,
+      fechaInicio: _fechaInicio!,
+      fechaFin: _fechaFin!,
+      hora: _hora!.format(context),
+      colorIndex: _selectedColor,
+    );
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Medicamento guardado correctamente')),
+      );
+      Navigator.pop(context, {
+        'nombre': _medicamentoController.text,
+        'dosis': _dosisController.text,
+        'nota': _notaController.text,
+        'fechaInicio': _fechaInicio,
+        'fechaFin': _fechaFin,
+        'hora': _hora!.format(context),
+        'colorIndex': _selectedColor,
+      });
+    }
   }
 }
