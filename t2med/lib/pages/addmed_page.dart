@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:t2med/services/addmed_service.dart';
 
 class AddmedPage extends StatefulWidget {
   const AddmedPage({super.key});
@@ -20,6 +21,8 @@ class _AddmedPageState extends State<AddmedPage> {
   int _selectedColor = 0;
 
   final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
+
+  final AddMedService addMedService = AddMedService();
 
   @override
   Widget build(BuildContext context) {
@@ -92,24 +95,34 @@ class _AddmedPageState extends State<AddmedPage> {
               _label("Color"),
               Row(
                 children: List.generate(_colors.length, (index) {
+                  final color = _colors[index];
+                  final isSelected = _selectedColor == index;
+
                   return GestureDetector(
                     onTap: () => setState(() => _selectedColor = index),
                     child: Container(
                       margin: const EdgeInsets.only(right: 12, top: 12),
-                      width: 32,
-                      height: 32,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: _colors[index],
+                        color: color,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: _selectedColor == index
-                              ? Colors.black
-                              : Colors.transparent,
-                          width: 2,
+                          color: isSelected ? Colors.black : Colors.transparent,
+                          width: 3,
                         ),
+                        boxShadow: [
+                          if (isSelected)
+                            BoxShadow(
+                              color: color.withOpacity(0.4),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            )
+                        ],
                       ),
-                      child: _selectedColor == index
-                          ? const Icon(Icons.check, color: Colors.white, size: 20)
+                      child: isSelected
+                          ? const Icon(Icons.check,
+                          color: Colors.white, size: 20)
                           : null,
                     ),
                   );
@@ -130,8 +143,10 @@ class _AddmedPageState extends State<AddmedPage> {
                     onPressed: _guardarMedicamento,
                     child: const Text(
                       "Guardar",
-                      style:
-                          TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -144,11 +159,10 @@ class _AddmedPageState extends State<AddmedPage> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 8),
-        child: Text(text,
-            style:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-      );
+    padding: const EdgeInsets.only(top: 18, bottom: 8),
+    child:
+    Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+  );
 
   Widget _buildInputField(TextEditingController controller, String hint) {
     return TextFormField(
@@ -158,7 +172,7 @@ class _AddmedPageState extends State<AddmedPage> {
         filled: true,
         fillColor: Colors.white,
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -189,7 +203,8 @@ class _AddmedPageState extends State<AddmedPage> {
     final picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
+      // 🔒 No se puede seleccionar una fecha anterior a hoy
+      firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
     if (picked != null) setState(() => _fechaInicio = picked);
@@ -213,24 +228,44 @@ class _AddmedPageState extends State<AddmedPage> {
     if (picked != null) setState(() => _hora = picked);
   }
 
-  void _guardarMedicamento() {
-    if (_medicamentoController.text.isEmpty || _hora == null) {
+  void _guardarMedicamento() async {
+    if (_medicamentoController.text.isEmpty ||
+        _hora == null ||
+        _fechaInicio == null ||
+        _fechaFin == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Por favor completa los campos obligatorios')),
+        const SnackBar(
+          content: Text('⚠️ Por favor completa todos los campos requeridos'),
+        ),
       );
       return;
     }
 
-    final nuevoMed = {
-      'nombre': _medicamentoController.text,
-      'dosis': _dosisController.text,
-      'nota': _notaController.text,
-      'fechaInicio': _fechaInicio,
-      'fechaFin': _fechaFin,
-      'hora': _hora!.format(context),
-      'color': _colors[_selectedColor],
-    };
+    final error = await addMedService.addMedicine(
+      nombre: _medicamentoController.text,
+      dosis: _dosisController.text,
+      nota: _notaController.text,
+      fechaInicio: _fechaInicio!,
+      fechaFin: _fechaFin!,
+      hora: _hora!.format(context),
+      colorIndex: _selectedColor,
+    );
 
-    Navigator.pop(context, nuevoMed);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Medicamento guardado correctamente')),
+      );
+      Navigator.pop(context, {
+        'nombre': _medicamentoController.text,
+        'dosis': _dosisController.text,
+        'nota': _notaController.text,
+        'fechaInicio': _fechaInicio,
+        'fechaFin': _fechaFin,
+        'hora': _hora!.format(context),
+        'colorIndex': _selectedColor,
+      });
+    }
   }
 }
