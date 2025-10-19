@@ -23,9 +23,15 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
         return windows;
       case TargetPlatform.linux:
@@ -41,48 +47,30 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyB9BC_NWQkHgi1BAhfCrJg7mJaTz5wqFsY',
-    appId: '1:356929768009:web:8e27940444967f9d3a0d98',
-    messagingSenderId: '356929768009',
-    projectId: 't2med-6e5de',
-    authDomain: 't2med-6e5de.firebaseapp.com',
-    storageBucket: 't2med-6e5de.firebasestorage.app',
-    measurementId: 'G-7JP7YC6KHC',
+    apiKey: 'AIzaSyCwc2bM5-TG4h4V-qbbERlrqwRo9eweP1M',
+    appId: '1:699246740449:web:b79001139228b0401308a0',
+    messagingSenderId: '699246740449',
+    projectId: 't2med-9a1a5',
+    authDomain: 't2med-9a1a5.firebaseapp.com',
+    storageBucket: 't2med-9a1a5.firebasestorage.app',
+    measurementId: 'G-8MJB0DE0CX',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBH2NqqFPlp4cWQ_j4d8ejcUObjrg1HvzE',
-    appId: '1:356929768009:android:ffb84492305789603a0d98',
-    messagingSenderId: '356929768009',
-    projectId: 't2med-6e5de',
-    storageBucket: 't2med-6e5de.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAqgHXPVCpagvtn1AlLjy_gN5NNtyK_FPw',
-    appId: '1:356929768009:ios:9b59cde19553fde23a0d98',
-    messagingSenderId: '356929768009',
-    projectId: 't2med-6e5de',
-    storageBucket: 't2med-6e5de.firebasestorage.app',
-    iosBundleId: 'com.example.t2med',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAqgHXPVCpagvtn1AlLjy_gN5NNtyK_FPw',
-    appId: '1:356929768009:ios:9b59cde19553fde23a0d98',
-    messagingSenderId: '356929768009',
-    projectId: 't2med-6e5de',
-    storageBucket: 't2med-6e5de.firebasestorage.app',
-    iosBundleId: 'com.example.t2med',
+    apiKey: 'AIzaSyAu_I4xmWKstjEhUYXqaEz5whBhU7Cp3SE',
+    appId: '1:699246740449:android:333b783571d01dab1308a0',
+    messagingSenderId: '699246740449',
+    projectId: 't2med-9a1a5',
+    storageBucket: 't2med-9a1a5.firebasestorage.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyB9BC_NWQkHgi1BAhfCrJg7mJaTz5wqFsY',
-    appId: '1:356929768009:web:185d946c20fcba6e3a0d98',
-    messagingSenderId: '356929768009',
-    projectId: 't2med-6e5de',
-    authDomain: 't2med-6e5de.firebaseapp.com',
-    storageBucket: 't2med-6e5de.firebasestorage.app',
-    measurementId: 'G-14YHLQPCJ0',
+    apiKey: 'AIzaSyCwc2bM5-TG4h4V-qbbERlrqwRo9eweP1M',
+    appId: '1:699246740449:web:47e8f05656294ad81308a0',
+    messagingSenderId: '699246740449',
+    projectId: 't2med-9a1a5',
+    authDomain: 't2med-9a1a5.firebaseapp.com',
+    storageBucket: 't2med-9a1a5.firebasestorage.app',
+    measurementId: 'G-Y7J6WB6CS9',
   );
 }

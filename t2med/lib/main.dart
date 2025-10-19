@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart'; // 👈 Import necesario
 import 'package:provider/provider.dart';
 import 'package:t2med/pages/home_page.dart';
 import 'package:t2med/pages/login_page.dart';
@@ -12,6 +13,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // 👇 Esta línea evita el error de DateFormat.yMMMMd()
+  await initializeDateFormatting('es_ES', null);
+
   runApp(const AppState());
 }
 
@@ -41,11 +46,11 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: Colors.grey[200],
       ),
-      initialRoute: 'login', // La app empieza en el login
+      initialRoute: 'login',
       routes: {
         'login': (_) => const LoginPage(),
         'register': (_) => const RegistrationPage(),
-        'home': (_) => const HomePage(), // Nuestra nueva ruta
+        'home': (_) => const HomePage(),
       },
     );
   }
