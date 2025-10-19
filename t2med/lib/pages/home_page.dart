@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'addmed_page.dart';
 import 'editmed_page.dart';
+import 'package:t2med/services/addmed_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,8 +15,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AddMedService _medService = AddMedService();
 
   // 🎨 Lista de colores (igual que en AddmedPage)
   final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
@@ -60,7 +61,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 10),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore
+              stream: FirebaseFirestore.instance
                   .collection('users')
                   .doc(user.uid)
                   .collection('medicamentos')
@@ -88,7 +89,7 @@ class _HomePageState extends State<HomePage> {
                   itemCount: meds.length,
                   itemBuilder: (context, index) {
                     final med = meds[index].data() as Map<String, dynamic>;
-                    med['id'] = meds[index].id; // Guardar el ID
+                    med['id'] = meds[index].id;
                     bool completado = med['completado'] ?? false;
 
                     return Dismissible(
@@ -97,7 +98,7 @@ class _HomePageState extends State<HomePage> {
                       secondaryBackground: _deleteBackground(),
                       confirmDismiss: (direction) async {
                         if (direction == DismissDirection.startToEnd) {
-                          // Editar
+                          // Editar medicamento
                           final updatedMed = await Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -106,7 +107,7 @@ class _HomePageState extends State<HomePage> {
                           );
 
                           if (updatedMed != null) {
-                            await _firestore
+                            await FirebaseFirestore.instance
                                 .collection('users')
                                 .doc(user.uid)
                                 .collection('medicamentos')
@@ -115,9 +116,8 @@ class _HomePageState extends State<HomePage> {
                           }
 
                           return false;
-                        } else if (direction ==
-                            DismissDirection.endToStart) {
-                          // Eliminar
+                        } else if (direction == DismissDirection.endToStart) {
+                          // Eliminar medicamento usando el servicio
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
@@ -141,22 +141,25 @@ class _HomePageState extends State<HomePage> {
                           );
 
                           if (confirm == true) {
-                            await _firestore
-                                .collection('users')
-                                .doc(user.uid)
-                                .collection('medicamentos')
-                                .doc(med['id'])
-                                .delete();
+                            final error =
+                            await _medService.deleteMedicine(med['id']);
+                            if (error != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(error)));
+                              return false;
+                            }
                             return true;
                           }
+
                           return false;
                         }
+
                         return false;
                       },
                       child: GestureDetector(
                         onTap: () async {
                           med['completado'] = !completado;
-                          await _firestore
+                          await FirebaseFirestore.instance
                               .collection('users')
                               .doc(user.uid)
                               .collection('medicamentos')
@@ -255,7 +258,6 @@ class _HomePageState extends State<HomePage> {
   Widget _buildMedCard(Map<String, dynamic> med) {
     bool completado = med['completado'] ?? false;
 
-    // 🎨 Obtener color según el índice guardado
     int colorIndex = (med['colorIndex'] ?? 0).clamp(0, _colors.length - 1);
     final cardColor = _colors[colorIndex];
 
