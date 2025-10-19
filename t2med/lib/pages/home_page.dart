@@ -17,10 +17,12 @@ class _HomePageState extends State<HomePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // 🎨 Lista de colores (igual que en AddmedPage)
+  final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
+
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
-
     if (user == null) {
       return const Scaffold(
         body: Center(child: Text('Usuario no autenticado')),
@@ -86,7 +88,7 @@ class _HomePageState extends State<HomePage> {
                   itemCount: meds.length,
                   itemBuilder: (context, index) {
                     final med = meds[index].data() as Map<String, dynamic>;
-                    med['id'] = meds[index].id; // Guardar el ID para editar/eliminar
+                    med['id'] = meds[index].id; // Guardar el ID
                     bool completado = med['completado'] ?? false;
 
                     return Dismissible(
@@ -95,12 +97,14 @@ class _HomePageState extends State<HomePage> {
                       secondaryBackground: _deleteBackground(),
                       confirmDismiss: (direction) async {
                         if (direction == DismissDirection.startToEnd) {
+                          // Editar
                           final updatedMed = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => EditMedPage(med: med),
                             ),
                           );
+
                           if (updatedMed != null) {
                             await _firestore
                                 .collection('users')
@@ -109,8 +113,11 @@ class _HomePageState extends State<HomePage> {
                                 .doc(med['id'])
                                 .update(updatedMed);
                           }
-                          return false; // no eliminar
-                        } else if (direction == DismissDirection.endToStart) {
+
+                          return false;
+                        } else if (direction ==
+                            DismissDirection.endToStart) {
+                          // Eliminar
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
@@ -132,6 +139,7 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           );
+
                           if (confirm == true) {
                             await _firestore
                                 .collection('users')
@@ -216,8 +224,8 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(25),
                 ),
                 elevation: 6,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 10),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               child: const Text(
                 '+ MED',
@@ -246,11 +254,16 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildMedCard(Map<String, dynamic> med) {
     bool completado = med['completado'] ?? false;
+
+    // 🎨 Obtener color según el índice guardado
+    int colorIndex = (med['colorIndex'] ?? 0).clamp(0, _colors.length - 1);
+    final cardColor = _colors[colorIndex];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: med['color'] ?? Colors.deepPurple,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
