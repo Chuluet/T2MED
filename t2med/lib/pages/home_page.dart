@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'addmed_page.dart';
 import 'editmed_page.dart';
 import 'package:t2med/services/addmed_service.dart';
+import 'view_meds_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -40,6 +41,17 @@ class _HomePageState extends State<HomePage> {
             color: Colors.white,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.list, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ViewMedsPage()),
+              );
+            },
+          ),
+        ],
         backgroundColor: Colors.deepPurple,
         automaticallyImplyLeading: false,
       ),
@@ -97,27 +109,8 @@ class _HomePageState extends State<HomePage> {
                       background: _editBackground(),
                       secondaryBackground: _deleteBackground(),
                       confirmDismiss: (direction) async {
-                        if (direction == DismissDirection.startToEnd) {
-                          // Editar medicamento
-                          final updatedMed = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditMedPage(med: med),
-                            ),
-                          );
-
-                          if (updatedMed != null) {
-                            await FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(user.uid)
-                                .collection('medicamentos')
-                                .doc(med['id'])
-                                .update(updatedMed);
-                          }
-
-                          return false;
-                        } else if (direction == DismissDirection.endToStart) {
-                          // Eliminar medicamento usando el servicio
+                        if (direction == DismissDirection.endToStart) {
+                          // Eliminar medicamento
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
@@ -149,6 +142,25 @@ class _HomePageState extends State<HomePage> {
                               return false;
                             }
                             return true;
+                          }
+
+                          return false;
+                        } else if (direction == DismissDirection.startToEnd) {
+                          // Editar medicamento
+                          final updatedMed = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditMedPage(med: med),
+                            ),
+                          );
+
+                          if (updatedMed != null) {
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .collection('medicamentos')
+                                .doc(med['id'])
+                                .update(updatedMed);
                           }
 
                           return false;
