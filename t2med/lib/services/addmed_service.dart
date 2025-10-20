@@ -92,4 +92,44 @@ class AddMedService extends ChangeNotifier {
       return 'No se pudo eliminar el medicamento.';
     }
   }
+
+  /// Actualiza un medicamento existente.
+  Future<String?> updateMedicine({
+    required String id,
+    required String nombre,
+    required String dosis,
+    required String nota,
+    required DateTime fechaInicio,
+    required DateTime fechaFin,
+    required String hora,
+    required int colorIndex,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        return 'No hay un usuario autenticado.';
+      }
+
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('medicamentos')
+          .doc(id)
+          .update({
+        'nombre': nombre,
+        'dosis': dosis,
+        'nota': nota.isNotEmpty ? nota : null,
+        'fechaInicio': fechaInicio.toIso8601String(),
+        'fechaFin': fechaFin.toIso8601String(),
+        'hora': hora,
+        'colorIndex': colorIndex,
+      });
+
+      notifyListeners();
+      return null; // Éxito
+    } catch (e) {
+      debugPrint('Error al actualizar medicamento: $e');
+      return 'Ocurrió un error al actualizar el medicamento.';
+    }
+  }
 }

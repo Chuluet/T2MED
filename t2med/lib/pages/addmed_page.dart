@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:t2med/services/addmed_service.dart';
 
@@ -21,7 +22,6 @@ class _AddmedPageState extends State<AddmedPage> {
   int _selectedColor = 0;
 
   final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
-
   final AddMedService addMedService = AddMedService();
 
   @override
@@ -53,14 +53,21 @@ class _AddmedPageState extends State<AddmedPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _label("Medicamento"),
-              _buildInputField(_medicamentoController, 'Nombre del medicamento'),
-
+              _buildInputField(
+                _medicamentoController,
+                'Nombre del medicamento',
+              ),
               _label("Dosis"),
-              _buildInputField(_dosisController, 'Ej: 500 mg'),
-
+              _buildInputField(
+                _dosisController,
+                'Ej: 500',
+                isNumeric: true,
+              ),
               _label("Notas (opcional)"),
-              _buildInputField(_notaController, 'Agrega una nota...'),
-
+              _buildInputField(
+                _notaController,
+                'Agrega una nota...',
+              ),
               _label("Fecha de inicio"),
               GestureDetector(
                 onTap: _pickFechaInicio,
@@ -71,7 +78,6 @@ class _AddmedPageState extends State<AddmedPage> {
                   Icons.calendar_today,
                 ),
               ),
-
               _label("Fecha de fin"),
               GestureDetector(
                 onTap: _pickFechaFin,
@@ -82,7 +88,6 @@ class _AddmedPageState extends State<AddmedPage> {
                   Icons.event,
                 ),
               ),
-
               _label("Hora"),
               GestureDetector(
                 onTap: _pickHora,
@@ -91,13 +96,11 @@ class _AddmedPageState extends State<AddmedPage> {
                   Icons.access_time,
                 ),
               ),
-
               _label("Color"),
               Row(
                 children: List.generate(_colors.length, (index) {
                   final color = _colors[index];
                   final isSelected = _selectedColor == index;
-
                   return GestureDetector(
                     onTap: () => setState(() => _selectedColor = index),
                     child: Container(
@@ -122,13 +125,12 @@ class _AddmedPageState extends State<AddmedPage> {
                       ),
                       child: isSelected
                           ? const Icon(Icons.check,
-                          color: Colors.white, size: 20)
+                              color: Colors.white, size: 20)
                           : null,
                     ),
                   );
                 }),
               ),
-
               const SizedBox(height: 30),
               Center(
                 child: SizedBox(
@@ -159,12 +161,17 @@ class _AddmedPageState extends State<AddmedPage> {
   }
 
   Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(top: 18, bottom: 8),
-    child:
-    Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-  );
+        padding: const EdgeInsets.only(top: 18, bottom: 8),
+        child: Text(text,
+            style:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      );
 
-  Widget _buildInputField(TextEditingController controller, String hint) {
+  Widget _buildInputField(
+    TextEditingController controller,
+    String hint, {
+    bool isNumeric = false,
+  }) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
@@ -172,12 +179,16 @@ class _AddmedPageState extends State<AddmedPage> {
         filled: true,
         fillColor: Colors.white,
         contentPadding:
-        const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
       ),
+      keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+      inputFormatters: isNumeric
+          ? <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly]
+          : [],
     );
   }
 
@@ -203,7 +214,6 @@ class _AddmedPageState extends State<AddmedPage> {
     final picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      // 🔒 No se puede seleccionar una fecha anterior a hoy
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
@@ -228,16 +238,28 @@ class _AddmedPageState extends State<AddmedPage> {
     if (picked != null) setState(() => _hora = picked);
   }
 
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
+
   void _guardarMedicamento() async {
     if (_medicamentoController.text.isEmpty ||
+        _dosisController.text.isEmpty ||
         _hora == null ||
         _fechaInicio == null ||
         _fechaFin == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Por favor completa todos los campos requeridos'),
-        ),
-      );
+      _showErrorSnackBar('⚠️ Por favor completa todos los campos requeridos');
+      return;
+    }
+
+    final dose = int.tryParse(_dosisController.text);
+    if (dose == null || dose <= 0) {
+      _showErrorSnackBar('⚠️ La dosis debe ser un número mayor que cero.');
       return;
     }
 
@@ -252,20 +274,15 @@ class _AddmedPageState extends State<AddmedPage> {
     );
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      _showErrorSnackBar(error);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Medicamento guardado correctamente')),
+        const SnackBar(
+          content: Text('✅ Medicamento guardado correctamente'),
+          backgroundColor: Colors.green,
+        ),
       );
-      Navigator.pop(context, {
-        'nombre': _medicamentoController.text,
-        'dosis': _dosisController.text,
-        'nota': _notaController.text,
-        'fechaInicio': _fechaInicio,
-        'fechaFin': _fechaFin,
-        'hora': _hora!.format(context),
-        'colorIndex': _selectedColor,
-      });
+      Navigator.pop(context);
     }
   }
 }
