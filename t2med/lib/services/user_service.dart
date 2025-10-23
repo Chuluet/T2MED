@@ -66,4 +66,22 @@ class UserService extends ChangeNotifier {
     await _auth.signOut();
     notifyListeners();
   }
+
+  /// Envía un correo para restablecer la contraseña al [email] indicado.
+  /// Devuelve `null` si se envió correctamente, o un mensaje de error en caso contrario.
+  Future<String?> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        return 'No existe una cuenta registrada con ese correo.';
+      } else if (e.code == 'invalid-email') {
+        return 'El correo electrónico no tiene un formato válido.';
+      }
+      return e.message ?? 'Ocurrió un error al intentar enviar el correo.';
+    } catch (e) {
+      return 'Ocurrió un error inesperado.';
+    }
+  }
 }
