@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:t2med/services/user_service.dart';
+import 'package:t2med/pages/forgot_password_page.dart';
 import 'package:t2med/widgets/input_decorations.dart';
 
 class LoginPage extends StatefulWidget {
@@ -24,10 +25,23 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Mostrar mensaje opcional enviado por otras pantallas (por ejemplo: 'Revisa tu correo')
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is String && args.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(args)),
+        );
+      }
+    });
     final size = MediaQuery.of(context).size;
     final userService = Provider.of<UserService>(context);
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: SizedBox(
         width: double.infinity,
         height: double.infinity,
@@ -154,19 +168,33 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 50),
+                              const SizedBox(height: 16),
                             ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 40),
+                  // Reordenado: 'Crear una nueva cuenta' encima de 'Olvidaste tu contraseña'
                   TextButton(
                     onPressed: () => Navigator.pushNamed(context, 'register'),
                     child: const Text(
                       "Crear una nueva cuenta",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                  ),
+
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                      );
+                    },
+                    child: const Text(
+                      '¿Olvidaste tu contraseña?',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.deepPurple),
                     ),
                   ),
                 ],
@@ -192,12 +220,12 @@ class _LoginPageState extends State<LoginPage> {
       ),
       child: Stack(
         children: [
-          Positioned(child: _burbuja(), top: 90, left: 30),
-          Positioned(child: _burbuja(), top: -40, left: -30),
-          Positioned(child: _burbuja(), top: -50, right: -20),
-          Positioned(child: _burbuja(), bottom: -50, left: 10),
-          Positioned(child: _burbuja(), bottom: 120, right: 20),
-          Positioned(child: _burbuja(), bottom: 50, right: 150),
+          Positioned(top: 90, left: 30, child: _burbuja()),
+          Positioned(top: -40, left: -30, child: _burbuja()),
+          Positioned(top: -50, right: -20, child: _burbuja()),
+          Positioned(bottom: -50, left: 10, child: _burbuja()),
+          Positioned(bottom: 120, right: 20, child: _burbuja()),
+          Positioned(bottom: 50, right: 150, child: _burbuja()),
         ],
       ),
     );
