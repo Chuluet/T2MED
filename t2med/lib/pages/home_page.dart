@@ -3,10 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:date_picker_timeline/date_picker_timeline.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'addmed_page.dart';
 import 'editmed_page.dart';
-import 'package:t2med/services/addmed_service.dart';
-import 'view_meds_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,18 +15,16 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final AddMedService _medService = AddMedService();
+  DateTime _selectedDate = DateTime.now();
 
-  // 🎨 Lista de colores (igual que en AddmedPage)
-  final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
-
+ final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
+ 
   @override
   Widget build(BuildContext context) {
-    final user = _auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return const Scaffold(
-        body: Center(child: Text('Usuario no autenticado')),
+        body: Center(child: Text("Usuario no autenticado")),
       );
     }
 
@@ -41,17 +38,6 @@ class _HomePageState extends State<HomePage> {
             color: Colors.white,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.list, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ViewMedsPage()),
-              );
-            },
-          ),
-        ],
         backgroundColor: Colors.deepPurple,
         automaticallyImplyLeading: false,
       ),
@@ -59,17 +45,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           _headerSection(context),
           const SizedBox(height: 10),
-          Container(
-            margin: const EdgeInsets.only(left: 20),
-            child: DatePicker(
-              DateTime.now(),
-              height: 100,
-              width: 80,
-              initialSelectedDate: DateTime.now(),
-              selectionColor: Colors.deepPurple,
-              selectedTextColor: Colors.white,
-            ),
-          ),
+          _buildDatePicker(),
           const SizedBox(height: 10),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -87,30 +63,83 @@ class _HomePageState extends State<HomePage> {
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(
                     child: Text(
-                      "No hay medicamentos agregados",
+                      "No hay medicamentos registrados.",
                       style: TextStyle(fontSize: 16, color: Colors.black54),
                     ),
                   );
                 }
 
-                final meds = snapshot.data!.docs;
+                final todosMeds = snapshot.data!.docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return {
+                    'id': doc.id,
+                    ...data,
+                  };
+                }).toList();
+
+                // 📅 Filtro por fecha seleccionada
+                final medsDelDia = todosMeds.where((med) {
+                  try {
+                    if (med['fechaInicio'] == null || med['fechaFin'] == null) {
+                      return false;
+                    }
+
+                    final inicio = DateTime.parse(med['fechaInicio']);
+                    final fin = DateTime.parse(med['fechaFin']);
+
+                    // Normalizamos las fechas (sin hora)
+                    final sinHoraInicio =
+                        DateTime(inicio.year, inicio.month, inicio.day);
+                    final sinHoraFin =
+                        DateTime(fin.year, fin.month, fin.day);
+                    final seleccion = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month,
+                      _selectedDate.day,
+                    );
+
+                    return seleccion.isAtSameMomentAs(sinHoraInicio) ||
+                        seleccion.isAtSameMomentAs(sinHoraFin) ||
+                        (seleccion.isAfter(sinHoraInicio) &&
+                            seleccion.isBefore(sinHoraFin));
+                  } catch (e) {
+                    debugPrint("Error filtrando medicamento: $e");
+                    return false;
+                  }
+                }).toList();
+
+                if (medsDelDia.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No hay medicamentos activos para esta fecha.",
+                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                    ),
+                  );
+                }
 
                 return ListView.builder(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  itemCount: meds.length,
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  itemCount: medsDelDia.length,
                   itemBuilder: (context, index) {
-                    final med = meds[index].data() as Map<String, dynamic>;
-                    med['id'] = meds[index].id;
-                    bool completado = med['completado'] ?? false;
-
+                    final med = medsDelDia[index];
                     return Dismissible(
                       key: Key(med['id']),
                       background: _editBackground(),
                       secondaryBackground: _deleteBackground(),
                       confirmDismiss: (direction) async {
-                        if (direction == DismissDirection.endToStart) {
-                          // Eliminar medicamento
+                        if (direction == DismissDirection.startToEnd) {
+                          // ✏️ Editar medicamento
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditMedPage(med: med),
+                            ),
+                          );
+                          return false;
+                        } else if (direction ==
+                            DismissDirection.endToStart) {
+                          // 🗑 Confirmar eliminación
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
@@ -127,59 +156,20 @@ class _HomePageState extends State<HomePage> {
                                   onPressed: () =>
                                       Navigator.of(context).pop(true),
                                   child: const Text('Eliminar',
-                                      style: TextStyle(color: Colors.red)),
+                                      style:
+                                          TextStyle(color: Colors.red)),
                                 ),
                               ],
                             ),
                           );
-
                           if (confirm == true) {
-                            final error =
-                            await _medService.deleteMedicine(med['id']);
-                            if (error != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(error)));
-                              return false;
-                            }
-                            return true;
+                            await _eliminarMed(med['id']);
                           }
-
-                          return false;
-                        } else if (direction == DismissDirection.startToEnd) {
-                          // Editar medicamento
-                          final updatedMed = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditMedPage(med: med),
-                            ),
-                          );
-
-                          if (updatedMed != null) {
-                            await FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(user.uid)
-                                .collection('medicamentos')
-                                .doc(med['id'])
-                                .update(updatedMed);
-                          }
-
                           return false;
                         }
-
                         return false;
                       },
-                      child: GestureDetector(
-                        onTap: () async {
-                          med['completado'] = !completado;
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .collection('medicamentos')
-                              .doc(med['id'])
-                              .update({'completado': med['completado']});
-                        },
-                        child: _buildMedCard(med),
-                      ),
+                      child: _buildMedCard(med),
                     );
                   },
                 );
@@ -191,6 +181,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 🧭 Encabezado con fecha y botón agregar
   Widget _headerSection(BuildContext context) {
     return SizedBox(
       height: 100,
@@ -240,7 +231,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 elevation: 6,
                 padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               child: const Text(
                 '+ MED',
@@ -253,41 +244,95 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 📅 Selector de fecha
+  Widget _buildDatePicker() {
+    return Container(
+      margin: const EdgeInsets.only(left: 20),
+      child: DatePicker(
+        DateTime.now(),
+        height: 100,
+        width: 80,
+        initialSelectedDate: _selectedDate,
+        selectionColor: Colors.deepPurple,
+        selectedTextColor: Colors.white,
+        onDateChange: (date) {
+          setState(() {
+            _selectedDate = date;
+          });
+        },
+      ),
+    );
+  }
+
+  // 🧱 Fondos para deslizar editar/eliminar
   Widget _editBackground() => Container(
-    color: Colors.blue,
-    alignment: Alignment.centerLeft,
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: const Icon(Icons.edit, color: Colors.white, size: 28),
-  );
+        color: Colors.blue,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.edit, color: Colors.white, size: 28),
+      );
 
   Widget _deleteBackground() => Container(
-    color: Colors.red,
-    alignment: Alignment.centerRight,
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: const Icon(Icons.delete, color: Colors.white, size: 28),
-  );
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete, color: Colors.white, size: 28),
+      );
 
+  // 🗑 Eliminar medicamento en Firestore
+  Future<void> _eliminarMed(String id) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('medicamentos')
+          .doc(id)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Medicamento eliminado")),
+      );
+    } catch (e) {
+      debugPrint("Error al eliminar: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("No se pudo eliminar el medicamento")),
+      );
+    }
+  }
+
+  // 💊 Tarjeta de medicamento
   Widget _buildMedCard(Map<String, dynamic> med) {
     bool completado = med['completado'] ?? false;
 
-    int colorIndex = (med['colorIndex'] ?? 0).clamp(0, _colors.length - 1);
-    final cardColor = _colors[colorIndex];
+    int colorIndex = 0;
+    if (med['colorIndex'] is int) {
+      colorIndex = med['colorIndex'];
+    } else if (med['colorIndex'] is String) {
+      colorIndex = int.tryParse(med['colorIndex']) ?? 0;
+    }
+
+    final color = _colors[colorIndex % _colors.length];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: color,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Nombre + estado
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                med['nombre'] ?? '',
+                med['nombre'] ?? 'Sin nombre',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -296,7 +341,7 @@ class _HomePageState extends State<HomePage> {
               ),
               Container(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: completado ? Colors.green : Colors.orange,
                   borderRadius: BorderRadius.circular(8),
@@ -308,22 +353,27 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
+
           const SizedBox(height: 8),
+
+          // Hora
           Row(
             children: [
               const Icon(Icons.access_time, color: Colors.white70, size: 18),
               const SizedBox(width: 6),
               Text(
-                med['hora'] ?? '',
+                med['hora'] ?? '--:--',
                 style: const TextStyle(color: Colors.white70, fontSize: 15),
               ),
             ],
           ),
+
+          // Nota (si existe)
           if (med['nota'] != null && med['nota'].toString().isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                med['nota'] ?? '',
+                med['nota'],
                 style: const TextStyle(color: Colors.white, fontSize: 15),
               ),
             ),
