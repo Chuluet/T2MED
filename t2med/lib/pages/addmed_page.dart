@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:t2med/services/addmed_service.dart';
+import 'package:t2med/services/notification_service.dart';
 
 class AddmedPage extends StatefulWidget {
   const AddmedPage({super.key});
@@ -20,9 +21,18 @@ class _AddmedPageState extends State<AddmedPage> {
   DateTime? _fechaFin;
   TimeOfDay? _hora;
   int _selectedColor = 0;
+  bool _isSaving = false;
 
   final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
   final AddMedService addMedService = AddMedService();
+  final NotificationService notificationService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar notificaciones
+    notificationService.initNotification();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +102,7 @@ class _AddmedPageState extends State<AddmedPage> {
               GestureDetector(
                 onTap: _pickHora,
                 child: _buildDateField(
-                  _hora == null ? 'Seleccionar hora' : _hora!.format(context),
+                  _hora == null ? 'Seleccionar hora' : _formatTimeOfDay(_hora!),
                   Icons.access_time,
                 ),
               ),
@@ -132,6 +142,8 @@ class _AddmedPageState extends State<AddmedPage> {
                 }),
               ),
               const SizedBox(height: 30),
+              
+              // Botón Guardar
               Center(
                 child: SizedBox(
                   width: double.infinity,
@@ -142,12 +154,46 @@ class _AddmedPageState extends State<AddmedPage> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
                     ),
-                    onPressed: _guardarMedicamento,
+                    onPressed: _isSaving ? null : _guardarMedicamento,
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            "Guardar",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Botón de prueba de notificaciones
+              Center(
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: _testNotification,
                     child: const Text(
-                      "Guardar",
+                      "🔔 Probar Notificación",
                       style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -158,6 +204,10 @@ class _AddmedPageState extends State<AddmedPage> {
         ),
       ),
     );
+  }
+
+  String _formatTimeOfDay(TimeOfDay tod) {
+    return '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _label(String text) => Padding(
@@ -217,7 +267,9 @@ class _AddmedPageState extends State<AddmedPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _fechaInicio = picked);
+    if (picked != null && mounted) {
+      setState(() => _fechaInicio = picked);
+    }
   }
 
   Future<void> _pickFechaFin() async {
@@ -227,7 +279,9 @@ class _AddmedPageState extends State<AddmedPage> {
       firstDate: _fechaInicio ?? DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _fechaFin = picked);
+    if (picked != null && mounted) {
+      setState(() => _fechaFin = picked);
+    }
   }
 
   Future<void> _pickHora() async {
@@ -235,19 +289,50 @@ class _AddmedPageState extends State<AddmedPage> {
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (picked != null) setState(() => _hora = picked);
+    if (picked != null && mounted) {
+      setState(() => _hora = picked);
+    }
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  // Método para probar notificaciones
+  void _testNotification() async {
+    try {
+      await notificationService.showNotification(
+        999, 
+        '🔔 Prueba de Notificación', 
+        '¡Las notificaciones están funcionando correctamente!'
+      );
+      _showSuccessSnackBar('✅ Notificación de prueba enviada');
+    } catch (e) {
+      _showErrorSnackBar('❌ Error al enviar notificación: $e');
+    }
   }
 
   void _guardarMedicamento() async {
+    if (_isSaving) return;
+    
     if (_medicamentoController.text.isEmpty ||
         _dosisController.text.isEmpty ||
         _hora == null ||
@@ -263,25 +348,31 @@ class _AddmedPageState extends State<AddmedPage> {
       return;
     }
 
+    if (mounted) {
+      setState(() => _isSaving = true);
+    }
+
+    // Convertir la hora a formato 24 horas (HH:mm)
+    final hora24 = '${_hora!.hour.toString().padLeft(2, '0')}:${_hora!.minute.toString().padLeft(2, '0')}';
+
     final error = await addMedService.addMedicine(
       nombre: _medicamentoController.text,
       dosis: _dosisController.text,
       nota: _notaController.text,
       fechaInicio: _fechaInicio!,
       fechaFin: _fechaFin!,
-      hora: _hora!.format(context),
+      hora: hora24,
       colorIndex: _selectedColor,
     );
+
+    if (!mounted) return;
+
+    setState(() => _isSaving = false);
 
     if (error != null) {
       _showErrorSnackBar(error);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Medicamento guardado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      _showSuccessSnackBar('✅ Medicamento guardado correctamente');
       Navigator.pop(context);
     }
   }
