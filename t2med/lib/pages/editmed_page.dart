@@ -50,13 +50,21 @@ class _EditMedPageState extends State<EditMedPage> {
   TimeOfDay _parseHora(String? hora) {
     if (hora == null || hora.isEmpty) return TimeOfDay.now();
     try {
+      // Manejar formato HH:mm (24 horas)
       final parts = hora.split(':');
-      final hour = int.parse(parts[0].replaceAll(RegExp(r'[^0-9]'), ''));
-      final minute = int.parse(parts[1].replaceAll(RegExp(r'[^0-9]'), ''));
-      return TimeOfDay(hour: hour, minute: minute);
+      if (parts.length == 2) {
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        return TimeOfDay(hour: hour, minute: minute);
+      }
+      return TimeOfDay.now();
     } catch (e) {
       return TimeOfDay.now();
     }
+  }
+
+  String _formatTimeOfDay(TimeOfDay tod) {
+    return '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -128,7 +136,7 @@ class _EditMedPageState extends State<EditMedPage> {
                       child: _buildDateField(
                         _hora == null
                             ? 'Seleccionar hora'
-                            : _hora!.format(context),
+                            : _formatTimeOfDay(_hora!),
                         Icons.access_time,
                       ),
                     ),
@@ -138,10 +146,13 @@ class _EditMedPageState extends State<EditMedPage> {
                         final color = _colors[index];
                         final isSelected = _selectedColor == index;
                         return GestureDetector(
-                          onTap: () => setState(() => _selectedColor = index),
+                          onTap: () {
+                            if (mounted) {
+                              setState(() => _selectedColor = index);
+                            }
+                          },
                           child: Container(
-                            margin:
-                                const EdgeInsets.only(right: 12, top: 12),
+                            margin: const EdgeInsets.only(right: 12, top: 12),
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
@@ -182,14 +193,23 @@ class _EditMedPageState extends State<EditMedPage> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          onPressed: _guardarCambios,
-                          child: const Text(
-                            "Guardar Cambios",
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold),
-                          ),
+                          onPressed: _loading ? null : _guardarCambios,
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  "Guardar Cambios",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
+                                ),
                         ),
                       ),
                     ),
@@ -258,7 +278,9 @@ class _EditMedPageState extends State<EditMedPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _fechaInicio = picked);
+    if (picked != null && mounted) {
+      setState(() => _fechaInicio = picked);
+    }
   }
 
   Future<void> _pickFechaFin() async {
@@ -268,22 +290,30 @@ class _EditMedPageState extends State<EditMedPage> {
       firstDate: _fechaInicio ?? DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _fechaFin = picked);
+    if (picked != null && mounted) {
+      setState(() => _fechaFin = picked);
+    }
   }
 
   Future<void> _pickHora() async {
     final picked =
         await showTimePicker(context: context, initialTime: _hora ?? TimeOfDay.now());
-    if (picked != null) setState(() => _hora = picked);
+    if (picked != null && mounted) {
+      setState(() => _hora = picked);
+    }
   }
 
   void _showSnack(String message, {Color color = Colors.redAccent}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: color),
+      );
+    }
   }
 
   Future<void> _guardarCambios() async {
+    if (_loading) return; // Prevenir múltiples taps
+    
     if (_medicamentoController.text.isEmpty ||
         _dosisController.text.isEmpty ||
         _hora == null ||
@@ -293,7 +323,12 @@ class _EditMedPageState extends State<EditMedPage> {
       return;
     }
 
-    setState(() => _loading = true);
+    if (mounted) {
+      setState(() => _loading = true);
+    }
+
+    // Convertir la hora a formato 24 horas (HH:mm)
+    final hora24 = '${_hora!.hour.toString().padLeft(2, '0')}:${_hora!.minute.toString().padLeft(2, '0')}';
 
     final error = await _addMedService.updateMedicine(
       id: widget.med['id'],
@@ -302,9 +337,11 @@ class _EditMedPageState extends State<EditMedPage> {
       nota: _notaController.text,
       fechaInicio: _fechaInicio!,
       fechaFin: _fechaFin!,
-      hora: _hora!.format(context),
+      hora: hora24,
       colorIndex: _selectedColor,
     );
+
+    if (!mounted) return; // Si el widget ya no está montado, no hacer nada
 
     setState(() => _loading = false);
 
