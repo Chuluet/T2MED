@@ -94,8 +94,6 @@ class AddMedService extends ChangeNotifier {
         body: body,
         hour: hour,
         minute: minute,
-        startDate: DateTime.now(), // Comenzar hoy
-        endDate: DateTime.now().add(const Duration(days: 365)), // Por 1 año
       );
 
       debugPrint('Notificación programada para $nombre a las $hora');
