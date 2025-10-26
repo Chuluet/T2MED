@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:date_picker_timeline/date_picker_timeline.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:t2med/services/notification_service.dart';
 
 import 'addmed_page.dart';
 import 'editmed_page.dart';
@@ -18,6 +19,7 @@ class _HomePageState extends State<HomePage> {
   DateTime _selectedDate = DateTime.now();
 
  final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
+ final NotificationService _notificationService = NotificationService();
  
   @override
   Widget build(BuildContext context) {
@@ -40,6 +42,18 @@ class _HomePageState extends State<HomePage> {
         ),
         backgroundColor: Colors.deepPurple,
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_active, color: Colors.white),
+            onPressed: () {
+              _notificationService.showNotification(
+                1, 
+                'Notificación de Prueba', 
+                'Esta es una prueba de notificación inmediata.'
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
