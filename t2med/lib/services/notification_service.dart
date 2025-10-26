@@ -29,72 +29,42 @@ class NotificationService {
     _initialized = true;
   }
 
-  // Programar notificación diaria - MUCHO MÁS SIMPLE
+  // Programar notificación diaria simple (sin botones)
   Future<void> scheduleDailyNotification({
     required int id,
     required String title,
     required String body,
     required int hour,
     required int minute,
-    required DateTime startDate,
-    required DateTime endDate,
   }) async {
     if (!_initialized) {
       await initNotification();
     }
 
-    // Programar notificación recurrente diaria
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: id,
         channelKey: 'medication_channel',
         title: title,
         body: body,
+        // Al tocar la notificación se abrirá la app
+        payload: {'navigate': 'true'},
       ),
-      actionButtons: [
-        NotificationActionButton(key: 'CONFIRM', label: 'Confirmar'),
-        NotificationActionButton(key: 'OMIT', label: 'Omitir'),
-      ],
       schedule: NotificationCalendar(
         hour: hour,
         minute: minute,
         second: 0,
         millisecond: 0,
-        repeats: true, // Se repite diariamente
+        repeats: true,
         allowWhileIdle: true,
       ),
     );
 
-    print('Notificación programada diariamente a las $hour:$minute');
+    print('Notificación simple programada diariamente a las $hour:$minute');
   }
 
   // Cancelar notificaciones de un medicamento
   Future<void> cancelMedicationNotifications(int id) async {
     await AwesomeNotifications().cancel(id);
-  }
-
-  // Cancelar todas las notificaciones
-  Future<void> cancelAllNotifications() async {
-    await AwesomeNotifications().cancelAll();
-  }
-
-  // Mostrar notificación inmediata (para testing)
-  Future<void> showNotification(int id, String title, String body) async {
-    if (!_initialized) {
-      await initNotification();
-    }
-    
-    await AwesomeNotifications().createNotification(
-      content: NotificationContent(
-        id: id,
-        channelKey: 'medication_channel',
-        title: title,
-        body: body,
-      ),
-      actionButtons: [
-        NotificationActionButton(key: 'CONFIRM', label: 'Confirmar'),
-        NotificationActionButton(key: 'OMIT', label: 'Omitir'),
-      ],
-    );
   }
 }
