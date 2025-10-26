@@ -38,6 +38,13 @@ void main() async {
   // Solicitar permisos para notificaciones
   await AwesomeNotifications().requestPermissionToSendNotifications();
 
+  // Listener para acciones de notificación
+  AwesomeNotifications().actionStream.listen((ReceivedAction receivedAction) {
+    print('Got an action: ${receivedAction.buttonKeyPressed}');
+    // Aquí puedes agregar la lógica para manejar la confirmación u omisión de la toma del medicamento.
+    // Por ejemplo, actualizar una base de datos o enviar una confirmación a un servidor.
+  });
+
   // 👇 Esta línea evita el error de DateFormat.yMMMMd()
   await initializeDateFormatting('es_ES', null);
 
