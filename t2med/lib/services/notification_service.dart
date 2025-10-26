@@ -51,6 +51,10 @@ class NotificationService {
         title: title,
         body: body,
       ),
+      actionButtons: [
+        NotificationActionButton(key: 'CONFIRM', label: 'Confirmar'),
+        NotificationActionButton(key: 'OMIT', label: 'Omitir'),
+      ],
       schedule: NotificationCalendar(
         hour: hour,
         minute: minute,
@@ -87,6 +91,10 @@ class NotificationService {
         title: title,
         body: body,
       ),
+      actionButtons: [
+        NotificationActionButton(key: 'CONFIRM', label: 'Confirmar'),
+        NotificationActionButton(key: 'OMIT', label: 'Omitir'),
+      ],
     );
   }
 }
