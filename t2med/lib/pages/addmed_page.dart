@@ -174,31 +174,6 @@ class _AddmedPageState extends State<AddmedPage> {
                   ),
                 ),
               ),
-              
-              const SizedBox(height: 16),
-              
-              // Botón de prueba de notificaciones
-              Center(
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onPressed: _testNotification,
-                    child: const Text(
-                      "🔔 Probar Notificación",
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -313,20 +288,6 @@ class _AddmedPageState extends State<AddmedPage> {
           backgroundColor: Colors.green,
         ),
       );
-    }
-  }
-
-  // Método para probar notificaciones
-  void _testNotification() async {
-    try {
-      await notificationService.showNotification(
-        999, 
-        '🔔 Prueba de Notificación', 
-        '¡Las notificaciones están funcionando correctamente!'
-      );
-      _showSuccessSnackBar('✅ Notificación de prueba enviada');
-    } catch (e) {
-      _showErrorSnackBar('❌ Error al enviar notificación: $e');
     }
   }
 

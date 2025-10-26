@@ -5,7 +5,7 @@ import 'package:t2med/pages/editmed_page.dart';
 import 'package:t2med/services/addmed_service.dart';
 
 class ViewMedsPage extends StatefulWidget {
-  const ViewMedsPage({Key? key}) : super(key: key);
+  const ViewMedsPage({super.key});
 
   @override
   _ViewMedsPageState createState() => _ViewMedsPageState();
