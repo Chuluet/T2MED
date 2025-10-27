@@ -88,7 +88,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(labelText: 'Teléfono de contacto', hintText: '3001234567', prefixIcon: Icon(Icons.phone)),
                 validator: (value) {
-                  String pattern = r'^[0-9]{10}$'; // 10 dígitos
+                  String pattern = r'^[0-9]{10,15}$'; // 10 dígitos
                   RegExp regExp = RegExp(pattern);
                   return regExp.hasMatch(value ?? '') ? null : 'Debe ser un número de 10 dígitos';
                 },
@@ -104,7 +104,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 decoration: const InputDecoration(labelText: 'Teléfono de emergencia (opcional)', hintText: '3009876543', prefixIcon: Icon(Icons.phone_in_talk)),
                 validator: (value) {
                   if (value == null || value.isEmpty) return null; // Opcional
-                  String pattern = r'^[0-9]{10}$';
+                  String pattern = r'^\+[1-9]\d{0,2}\d{10}$';
                   RegExp regExp = RegExp(pattern);
                   return regExp.hasMatch(value) ? null : 'Debe ser un número de 10 dígitos';
                 },

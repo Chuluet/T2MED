@@ -7,6 +7,7 @@ import 'package:t2med/services/med_service.dart';
 
 import 'addmed_page.dart';
 import 'editmed_page.dart';
+import 'history_page.dart'; // Cambiado a history_page.dart
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -37,6 +38,9 @@ class _HomePageState extends State<HomePage> {
       fechaTomaISO,
       confirmacion,
     );
+
+    // Actualizar la UI para reflejar el cambio
+    setState(() {});
   }
 
   // Diálogo para confirmar o omitir la toma
@@ -64,6 +68,42 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _scheduleChecksForToday(); // Programar verificaciones para medicamentos de hoy al iniciar
+  }
+
+  // Programa las verificaciones para los medicamentos de hoy
+  void _scheduleChecksForToday() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('medicamentos')
+        .get()
+        .then((snapshot) {
+      for (final doc in snapshot.docs) {
+        final med = {'id': doc.id, ...doc.data() as Map<String, dynamic>};
+        final horaTomaParts = med['hora'].split(':');
+        final scheduledTime = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          int.parse(horaTomaParts[0]),
+          int.parse(horaTomaParts[1]),
+        );
+        _medService.scheduleMedicationCheck(
+          medId: med['id'],
+          medicationName: med['nombre'], // Nombre del medicamento
+          scheduledTime: scheduledTime,
+        );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -84,6 +124,17 @@ class _HomePageState extends State<HomePage> {
         ),
         backgroundColor: Colors.deepPurple,
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HistoryPage()),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -114,15 +165,15 @@ class _HomePageState extends State<HomePage> {
                 }).toList();
 
                 final medsDelDia = todosMeds.where((med) {
-                   try {
+                  try {
                     if (med['fechaInicio'] == null || med['fechaFin'] == null) return false;
 
                     final inicio = DateTime.parse(med['fechaInicio']);
                     final fin = DateTime.parse(med['fechaFin']);
                     final seleccion = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-                    
-                    return !seleccion.isBefore(DateTime(inicio.year, inicio.month, inicio.day)) && 
-                           !seleccion.isAfter(DateTime(fin.year, fin.month, fin.day));
+
+                    return !seleccion.isBefore(DateTime(inicio.year, inicio.month, inicio.day)) &&
+                        !seleccion.isAfter(DateTime(fin.year, fin.month, fin.day));
 
                   } catch (e) {
                     debugPrint("Error filtrando medicamento: $e");
@@ -159,26 +210,26 @@ class _HomePageState extends State<HomePage> {
       background: _editBackground(),
       secondaryBackground: _deleteBackground(),
       confirmDismiss: (direction) async {
-         if (direction == DismissDirection.startToEnd) {
-            await Navigator.push(context, MaterialPageRoute(builder: (context) => EditMedPage(med: med)));
-            return false; 
-          } else {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Confirmar eliminación'),
-                content: const Text('¿Seguro que desea eliminar el medicamento?'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
-                  TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
-                ],
-              ),
-            );
-            if (confirm == true) {
-              await _eliminarMed(med['id']);
-            }
-            return false; // No se elimina el widget automáticamente
+        if (direction == DismissDirection.startToEnd) {
+          await Navigator.push(context, MaterialPageRoute(builder: (context) => EditMedPage(med: med)));
+          return false;
+        } else {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Confirmar eliminación'),
+              content: const Text('¿Seguro que desea eliminar el medicamento?'),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
+                TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
+              ],
+            ),
+          );
+          if (confirm == true) {
+            await _eliminarMed(med['id']);
           }
+          return false; // No se elimina el widget automáticamente
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
@@ -198,7 +249,7 @@ class _HomePageState extends State<HomePage> {
               if (toma['estado'] == 'confirmada') {
                 estado = "Completado";
                 estadoColor = Colors.green;
-              } else {
+              } else if (toma['estado'] == 'omitida') {
                 estado = "Omitido";
                 estadoColor = Colors.grey;
               }
@@ -251,7 +302,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Refactor del resto de widgets y métodos...
   Widget _headerSection(BuildContext context) {
     return SizedBox(
       height: 100,
@@ -299,9 +349,42 @@ class _HomePageState extends State<HomePage> {
         initialSelectedDate: _selectedDate,
         selectionColor: Colors.deepPurple,
         selectedTextColor: Colors.white,
-        onDateChange: (date) => setState(() => _selectedDate = date),
+        onDateChange: (date) {
+          setState(() => _selectedDate = date);
+          _scheduleChecksForDate(date); // Programar verificaciones para la nueva fecha
+        },
       ),
     );
+  }
+
+  // Programa las verificaciones para una fecha específica
+  void _scheduleChecksForDate(DateTime date) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('medicamentos')
+        .get()
+        .then((snapshot) {
+      for (final doc in snapshot.docs) {
+        final med = {'id': doc.id, ...doc.data() as Map<String, dynamic>};
+        final horaTomaParts = med['hora'].split(':');
+        final scheduledTime = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          int.parse(horaTomaParts[0]),
+          int.parse(horaTomaParts[1]),
+        );
+        _medService.scheduleMedicationCheck(
+          medId: med['id'],
+          medicationName: med['nombre'], // Nombre del medicamento
+          scheduledTime: scheduledTime,
+        );
+      }
+    });
   }
 
   Widget _buildEmptyState(String message) {
