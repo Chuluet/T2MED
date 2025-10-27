@@ -84,4 +84,43 @@ class UserService extends ChangeNotifier {
       return 'Ocurrió un error inesperado.';
     }
   }
+  Future<String?> notifyEmergencyContact({
+    required String userId,
+    required String medicationName,
+    required DateTime scheduledTime,
+  }) async {
+    try {
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        return 'Usuario no encontrado.';
+      }
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      String? emergencyPhone = userData['emergencyPhone'] as String?;
+
+      if (emergencyPhone == null || emergencyPhone.isEmpty) {
+        return 'No hay contacto de emergencia registrado.';
+      }
+
+      Duration timeElapsed = DateTime.now().toLocal().difference(scheduledTime.toLocal());
+      if (timeElapsed.inMinutes <= 30) {
+        return 'Aún no ha pasado el tiempo para notificar (30 min).';
+      }
+
+      String userFullName = '${userData['name']} ${userData['lastName'] ?? ''}';
+      String scheduledTimeStr = '${scheduledTime.toLocal().hour.toString().padLeft(2, '0')}:${scheduledTime.toLocal().minute.toString().padLeft(2, '0')}';
+      String message = 'El usuario $userFullName no ha confirmado la toma del medicamento $medicationName a las $scheduledTimeStr.';
+
+      await _firestore.collection('messages').add({
+        'to': emergencyPhone,
+        'body': message,
+        'type': 'sms',
+      });
+
+      return null; // Éxito
+    } catch (e) {
+      print('Error en notificación: $e');
+      return 'Ocurrió un error inesperado al programar la notificación.';
+    }
+  }
 }
