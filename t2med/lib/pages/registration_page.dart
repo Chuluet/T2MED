@@ -86,9 +86,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Teléfono de contacto', hintText: '3001234567', prefixIcon: Icon(Icons.phone)),
+                decoration: const InputDecoration(labelText: 'Teléfono de contacto', hintText: '+57 3001234567', prefixIcon: Icon(Icons.phone)),
                 validator: (value) {
-                  String pattern = r'^[0-9]{10,15}$'; // 10 dígitos
+                  String pattern = r'^\+[1-9]\d{0,2}\d{10}$'; // 10 dígitos
                   RegExp regExp = RegExp(pattern);
                   return regExp.hasMatch(value ?? '') ? null : 'Debe ser un número de 10 dígitos';
                 },
@@ -101,7 +101,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Teléfono de emergencia (opcional)', hintText: '3009876543', prefixIcon: Icon(Icons.phone_in_talk)),
+                decoration: const InputDecoration(labelText: 'Teléfono de emergencia (opcional)', hintText: '+57 3009876543', prefixIcon: Icon(Icons.phone_in_talk)),
                 validator: (value) {
                   if (value == null || value.isEmpty) return null; // Opcional
                   String pattern = r'^\+[1-9]\d{0,2}\d{10}$';
