@@ -17,12 +17,17 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Scaffold(body: Center(child: Text("Usuario no autenticado")));
+      return const Scaffold(
+        body: Center(child: Text("Usuario no autenticado")),
+      );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historial de Tomas'),
+        title: const Text(
+          'Historial de Tomas',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.deepPurple,
       ),
       body: StreamBuilder<List<QueryDocumentSnapshot>>(
@@ -33,7 +38,12 @@ class _HistoryPageState extends State<HistoryPage> {
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No hay historial de tomas.', style: TextStyle(fontSize: 16)));
+            return const Center(
+              child: Text(
+                'No hay historial de tomas.',
+                style: TextStyle(fontSize: 16),
+              ),
+            );
           }
 
           final tomas = snapshot.data!;
@@ -46,8 +56,12 @@ class _HistoryPageState extends State<HistoryPage> {
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ListTile(
-                  title: Text('${data['nombreMedicamento']} - ${data['estado']}'),
-                  subtitle: Text('${data['fecha'].split('T')[0]} ${data['hora']}'),
+                  title: Text(
+                    '${data['nombreMedicamento']} - ${data['estado']}',
+                  ),
+                  subtitle: Text(
+                    '${data['fecha'].split('T')[0]} ${data['hora']}',
+                  ),
                 ),
               );
             },
