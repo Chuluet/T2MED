@@ -28,15 +28,15 @@ class _HomePageState extends State<HomePage> {
 
     if (confirmacion == null || !mounted) return; // Si el usuario cierra el diálogo
 
-    final fechaTomaISO = DateTime(
+    final fechaToma = DateTime(
       _selectedDate.year,
       _selectedDate.month,
       _selectedDate.day,
-    ).toIso8601String();
+    );
 
     await _medService.actualizarEstadoToma(
       med['id'],
-      fechaTomaISO,
+      fechaToma,
       confirmacion,
     );
 

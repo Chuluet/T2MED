@@ -1,26 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:t2med/services/med_service.dart';
 
-class HistoryPage extends StatefulWidget {
+class HistoryPage extends StatelessWidget {
   const HistoryPage({super.key});
-
-  @override
-  State<HistoryPage> createState() => _HistoryPageState();
-}
-
-class _HistoryPageState extends State<HistoryPage> {
-  final MedService _medService = MedService();
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+
     if (user == null) {
       return const Scaffold(
-        body: Center(child: Text("Usuario no autenticado")),
+        body: Center(child: Text('Usuario no autenticado')),
       );
     }
+
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('medicamentos');
 
     return Scaffold(
       appBar: AppBar(
@@ -30,41 +28,82 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
         backgroundColor: Colors.deepPurple,
       ),
-      body: StreamBuilder<List<QueryDocumentSnapshot>>(
-        stream: _medService.getTomasHistorial(), // Sin medId para obtener todos
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: StreamBuilder<QuerySnapshot>(
+        stream: userRef.snapshots(),
+        builder: (context, medsSnapshot) {
+          if (medsSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                'No hay historial de tomas.',
-                style: TextStyle(fontSize: 16),
-              ),
-            );
+          if (!medsSnapshot.hasData || medsSnapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No hay medicamentos.'));
           }
 
-          final tomas = snapshot.data!;
+          final meds = medsSnapshot.data!.docs;
 
-          return ListView.builder(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: tomas.length,
-            itemBuilder: (context, index) {
-              final data = tomas[index].data() as Map<String, dynamic>;
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: ListTile(
-                  title: Text(
-                    '${data['nombreMedicamento']} - ${data['estado']}',
-                  ),
-                  subtitle: Text(
-                    '${data['fecha'].split('T')[0]} ${data['hora']}',
-                  ),
-                ),
+            children: meds.map((medDoc) {
+              final medData = medDoc.data() as Map<String, dynamic>;
+              final nombreMed = medData['nombre'] ?? 'Medicamento';
+
+              return StreamBuilder<QuerySnapshot>(
+                stream: medDoc.reference
+                    .collection('tomas')
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+                builder: (context, tomasSnapshot) {
+                  if (!tomasSnapshot.hasData ||
+                      tomasSnapshot.data!.docs.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final tomas = tomasSnapshot.data!.docs;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          nombreMed,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      ...tomas.map((tomaDoc) {
+                        final data =
+                            tomaDoc.data() as Map<String, dynamic>;
+
+                        final fecha = data['fecha'] ?? '';
+                        final hora = data['hora'] ?? '';
+                        final estado = data['estado'] ?? 'pendiente';
+
+                        return Card(
+                          margin:
+                              const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            title: Text('$fecha $hora'),
+                            subtitle: Text('Estado: $estado'),
+                            leading: Icon(
+                              estado == 'completada'
+                                  ? Icons.check_circle
+                                  : Icons.schedule,
+                              color: estado == 'completada'
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                          ),
+                        );
+                      }),
+                      const Divider(),
+                    ],
+                  );
+                },
               );
-            },
+            }).toList(),
           );
         },
       ),
