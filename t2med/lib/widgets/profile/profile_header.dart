@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:t2med/pages/edit_user_page.dart';
 
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({super.key});
@@ -45,7 +46,10 @@ class ProfileHeader extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.white),
             onPressed: () {
-              // editar perfil (luego)
+               Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const EditUserPage()),
+                    );
             },
           ),
         ],

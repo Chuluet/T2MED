@@ -8,12 +8,38 @@ class MedService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Obtiene el stream de tomas para un medicamento en una fecha específica
+  // =========================
+  // HELPERS
+  // =========================
+  DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  String _obtenerDia(int weekday) {
+    final List<String> diasSemana = [
+      'Domingo',
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado'
+    ];
+    return diasSemana[weekday - 1];
+  }
+
+  // =========================
+  // STREAM DE TOMA POR DÍA
+  // =========================
   Stream<QuerySnapshot> getTomaStream(String medId, DateTime fecha) {
     final user = _auth.currentUser;
     if (user == null) return const Stream.empty();
 
-    final fechaISO = DateTime(fecha.year, fecha.month, fecha.day).toIso8601String();
+    final fechaKey =
+        '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}';
+
+    print('🔍 getTomaStream llamado:');
+    print('   - Med ID: $medId');
+    print('   - Fecha: $fecha');
+    print('   - FechaKey: $fechaKey');
 
     return _firestore
         .collection('users')
@@ -21,12 +47,17 @@ class MedService {
         .collection('medicamentos')
         .doc(medId)
         .collection('tomas')
-        .where('fecha', isEqualTo: fechaISO)
+        .where('fechaKey', isEqualTo: fechaKey)
         .limit(1)
-        .snapshots();
+        .snapshots()
+        .handleError((error) {
+      print('❌ Error en getTomaStream: $error');
+    });
   }
 
-  // Obtiene el historial de tomas
+  // =========================
+  // OBTENER HISTORIAL DE TOMAS (de notificaciones_emergencia)
+  // =========================
   Stream<List<QueryDocumentSnapshot>> getTomasHistorial({String? medId}) {
     final user = _auth.currentUser;
     if (user == null) return const Stream.empty();
@@ -63,9 +94,14 @@ class MedService {
     }
   }
 
-  // Actualiza el estado de una toma y gestiona la cancelación del SMS
+  // =========================
+  // CONFIRMAR / OMITIR TOMA - VERSIÓN FUSIONADA
+  // =========================
   Future<void> actualizarEstadoToma(
-      String medId, String fechaTomaISO, bool confirmada) async {
+    String medId,
+    DateTime fechaTomaReal, // Hora REAL de la toma
+    bool confirmada,
+  ) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
@@ -73,40 +109,101 @@ class MedService {
       final userRef = _firestore.collection('users').doc(user.uid);
       final medRef = userRef.collection('medicamentos').doc(medId);
 
-      // 1. Registro en Historial
+      // Obtener datos del medicamento
       final medDoc = await medRef.get();
-      final nombreMedicamento = medDoc.data()?['nombre'] ?? 'Desconocido';
+      if (!medDoc.exists) {
+        print('❌ Medicamento no encontrado: $medId');
+        return;
+      }
 
-      await medRef.collection('tomasHistorial').add({
-        'fecha': fechaTomaISO,
-        'hora': DateTime.now().toLocal().toIso8601String().split('T')[1].split('.')[0],
+      final medData = medDoc.data() ?? {};
+      final nombreMedicamento = medData['nombre'] ?? 'Medicamento';
+      final dosis = medData['dosis'] ?? '';
+      final minutosGracia = medData['tiempoGraciaMinutos'] ?? 10;
+
+      // Crear fechaKey basada en la fecha REAL
+      final fechaKey =
+          '${fechaTomaReal.year}-${fechaTomaReal.month.toString().padLeft(2, '0')}-${fechaTomaReal.day.toString().padLeft(2, '0')}';
+
+      // Obtener la hora programada COMPLETA
+      final horaProgramada = medData['hora'] ?? '00:00';
+      String horaProgramadaFormateada = horaProgramada;
+      if (!horaProgramada.contains(':')) {
+        horaProgramadaFormateada = '${horaProgramada.padLeft(2, '0')}:00';
+      }
+
+      print('🕒 Hora programada del medicamento: $horaProgramadaFormateada');
+
+      // Datos para la toma en medicamentos/tomas
+      final tomaData = {
+        'userId': user.uid,
+        'medId': medId,
+        'fecha': Timestamp.fromDate(fechaTomaReal),
+        'fechaKey': fechaKey,
+        'dia': _obtenerDia(fechaTomaReal.weekday),
+        'horaReal': fechaTomaReal.hour,
+        'minutoReal': fechaTomaReal.minute,
+        'horaProgramada': horaProgramadaFormateada,
+        'horaFormatoReal':
+            '${fechaTomaReal.hour.toString().padLeft(2, '0')}:${fechaTomaReal.minute.toString().padLeft(2, '0')}',
+        'horaFormatoProgramada': horaProgramadaFormateada,
         'nombreMedicamento': nombreMedicamento,
         'estado': confirmada ? 'Completada' : 'Omitida',
         'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      // 2. Actualizar estado actual de la toma
-      final existingTomaActual = await medRef.collection('tomas')
-          .where('fecha', isEqualTo: fechaTomaISO)
-          .limit(1)
-          .get();
-
-      final newState = {
-        'fecha': fechaTomaISO,
-        'estado': confirmada ? 'confirmada' : 'omitida',
-        'timestamp': FieldValue.serverTimestamp(),
       };
 
-      if (existingTomaActual.docs.isNotEmpty) {
-        await existingTomaActual.docs.first.reference.update(newState);
-      } else {
-        await medRef.collection('tomas').add(newState);
+      print('💾 Guardando toma con hora programada: $horaProgramadaFormateada');
+
+      // 1. Guardar en medicamentos/tomas (para pantalla principal)
+      try {
+        final query = await medRef
+            .collection('tomas')
+            .where('fechaKey', isEqualTo: fechaKey)
+            .limit(1)
+            .get();
+
+        if (query.docs.isNotEmpty) {
+          await query.docs.first.reference.update(tomaData);
+          print('✅ Toma actualizada en medicamentos/tomas');
+        } else {
+          await medRef.collection('tomas').add(tomaData);
+          print('✅ Toma guardada en medicamentos/tomas');
+        }
+      } catch (e) {
+        print('❌ Error guardando en medicamentos/tomas: $e');
       }
 
-      // 3. LOGICA SMS: Si confirma, cancelamos cualquier alerta pendiente (Criterio No Duplicidad)
+      // 2. Guardar en tomasHistorial (para historial)
+      try {
+        final historialData = {
+          'medId': medId,
+          'fecha': Timestamp.fromDate(fechaTomaReal),
+          'fechaKey': fechaKey,
+          'dia': _obtenerDia(fechaTomaReal.weekday),
+          'hora': fechaTomaReal.hour,
+          'minuto': fechaTomaReal.minute,
+          'horaFormato':
+              '${fechaTomaReal.hour.toString().padLeft(2, '0')}:${fechaTomaReal.minute.toString().padLeft(2, '0')}',
+          'horaProgramada': horaProgramadaFormateada,
+          'nombreMedicamento': nombreMedicamento,
+          'estado': confirmada ? 'Completada' : 'Omitida',
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        // Guardar en el historial del medicamento específico
+        await medRef.collection('tomasHistorial').add(historialData);
+        print('✅ Registro guardado en historial del medicamento');
+        print('   - Hora real: ${historialData['horaFormato']}');
+        print('   - Hora programada: ${historialData['horaProgramada']}');
+      } catch (e) {
+        print('⚠️ Advertencia: No se pudo guardar en tomasHistorial');
+        print('   Error: $e');
+      }
+
+      // 3. LOGICA SMS: Si confirma, cancelamos cualquier alerta pendiente
       if (confirmada) {
         try {
-          // 1. Buscamos todas las alertas 'pending' del usuario
+          // Buscamos todas las alertas 'pending' del usuario
           final alertaQuery = await _firestore
               .collection('users')
               .doc(user.uid)
@@ -114,13 +211,13 @@ class MedService {
               .where('status', isEqualTo: 'pending')
               .get();
 
-          debugPrint("🔍 Buscando alertas... Encontradas: ${alertaQuery.docs.length}");
+          debugPrint(
+              "🔍 Buscando alertas... Encontradas: ${alertaQuery.docs.length}");
 
           for (var doc in alertaQuery.docs) {
             final data = doc.data();
 
             // Comparamos si el medId coincide o si el nombre del medicamento está en el cuerpo
-            // Esto es más seguro por si los IDs (medicationId) tienen formatos distintos
             bool esMismoMed = data['medicationId'] == medId ||
                 data['body'].toString().contains(nombreMedicamento);
 
@@ -134,15 +231,19 @@ class MedService {
             }
           }
         } catch (e) {
-          debugPrint("❌ Error al intentar cancelar: $e");
+          debugPrint("❌ Error al intentar cancelar SMS: $e");
         }
       }
+
     } catch (e) {
-      debugPrint('Error al actualizar estado de toma: $e');
+      print('❌ Error general en actualizarEstadoToma: $e');
+      rethrow;
     }
   }
 
-  // Programa la verificación (Timer local mientras la app está abierta)
+  // =========================
+  // PROGRAMAR VERIFICACIÓN DE TOMA
+  // =========================
   Future<void> scheduleMedicationCheck({
     required String medId,
     required String medicationName,
@@ -158,31 +259,37 @@ class MedService {
         .doc(medId)
         .get();
 
-    final horaTomaParts = (medDoc.data()?['hora'] ?? '00:00').split(':');
+    final horaParts = (medDoc.data()?['hora'] ?? '00:00').split(':');
     final horaToma = DateTime(
       scheduledTime.year,
       scheduledTime.month,
       scheduledTime.day,
-      int.parse(horaTomaParts[0]),
-      int.parse(horaTomaParts[1]),
+      int.parse(horaParts[0]),
+      int.parse(horaParts[1]),
     );
 
-    final timeUntilCheck = horaToma.add(const Duration(seconds: 10)).difference(DateTime.now());
+    final delay = horaToma
+        .add(const Duration(minutes: 1))
+        .difference(DateTime.now());
 
-    if (timeUntilCheck.isNegative) {
-      await _checkAndNotifyIfUnconfirmed(medId, medicationName, horaToma, user.uid);
+    if (delay.isNegative) {
+      await _checkAndNotifyIfUnconfirmed(
+          medId, medicationName, horaToma, user.uid);
     } else {
-      Timer(timeUntilCheck, () async {
-        await _checkAndNotifyIfUnconfirmed(medId, medicationName, horaToma, user.uid);
+      Timer(delay, () async {
+        await _checkAndNotifyIfUnconfirmed(
+            medId, medicationName, horaToma, user.uid);
       });
     }
   }
 
-  // Verifica y crea el registro de alerta para el SMS (Criterio Múltiples Medicamentos)
-  Future<void> _checkAndNotifyIfUnconfirmed(
-      String medId, String medicationName, DateTime scheduledTime, String userId) async {
+  // =========================
+  // VERIFICAR Y NOTIFICAR SI NO CONFIRMADA
+  // =========================
+  Future<void> _checkAndNotifyIfUnconfirmed(String medId,
+      String medicationName, DateTime scheduledTime, String userId) async {
     try {
-      // Obtener detalles para el mensaje (Criterio Contenido: Nombre y Dosis)
+      // Obtener detalles para el mensaje
       final medDoc = await _firestore
           .collection('users')
           .doc(userId)
@@ -192,26 +299,27 @@ class MedService {
 
       final data = medDoc.data();
       final String dosis = data?['dosis'] ?? '';
-      final int minutosGracia = data?['tiempoGraciaMinutos'] ?? 10; // Configurable
+      final int minutosGracia = data?['tiempoGraciaMinutos'] ?? 10;
 
+      // Crear fechaKey para buscar
+      final fechaKey =
+          '${scheduledTime.year}-${scheduledTime.month.toString().padLeft(2, '0')}-${scheduledTime.day.toString().padLeft(2, '0')}';
+
+      // Verificar si ya está confirmada
       final tomaSnapshot = await _firestore
           .collection('users')
           .doc(userId)
           .collection('medicamentos')
           .doc(medId)
           .collection('tomas')
-          .get(); // Traemos las tomas para filtrar manualmente y evitar errores de formato ISO
+          .where('fechaKey', isEqualTo: fechaKey)
+          .limit(1)
+          .get();
 
-      bool yaEstaConfirmada = tomaSnapshot.docs.any((doc) {
-        final fechaDoc = doc.data()['fecha'].toString();
-        final estadoDoc = doc.data()['estado'].toString();
-        // Verificamos si la fecha del documento empieza igual que la que buscamos
-        return fechaDoc.contains(scheduledTime.toIso8601String().split('T').first) &&
-            estadoDoc == 'confirmada';
-      });
+      bool yaEstaConfirmada = tomaSnapshot.docs.isNotEmpty &&
+          tomaSnapshot.docs.first['estado'] == 'Completada';
 
       if (!yaEstaConfirmada) {
-        // Solo si NO encontramos la confirmación, enviamos el SMS
         final userService = UserService();
         await userService.notifyEmergencyContact(
           userId: userId,
@@ -221,7 +329,6 @@ class MedService {
           minutosGracia: minutosGracia,
         );
       }
-
     } catch (e) {
       debugPrint('Error en verificación de SMS: $e');
     }

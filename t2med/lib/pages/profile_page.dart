@@ -36,14 +36,6 @@ class ProfilePage extends StatelessWidget {
             ProfileSectionCard(
               children: [
                 ProfileOptionTile(
-                  icon: Icons.person_outline,
-                  title: 'My Account',
-                  subtitle: 'Make changes to your account',
-                  trailing: Icons.warning_amber_rounded,
-                  onTap: () {},
-                ),
-                const Divider(height: 1),
-                ProfileOptionTile(
                   icon: Icons.history,
                   title: 'Medication History',
                   subtitle: 'View medication intake history',

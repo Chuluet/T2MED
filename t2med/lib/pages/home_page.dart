@@ -9,7 +9,6 @@ import 'package:t2med/services/user_service.dart';
 
 import 'addmed_page.dart';
 import 'editmed_page.dart';
-import 'history_page.dart'; // Cambiado a history_page.dart
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -27,21 +26,22 @@ class _HomePageState extends State<HomePage> {
   Future<void> _handleToma(Map<String, dynamic> med) async {
     final confirmacion = await _mostrarDialogoConfirmacion(med);
 
-    if (confirmacion == null || !mounted) return; // Si el usuario cierra el diálogo
+    if (confirmacion == null || !mounted) return;
 
-    final fechaTomaISO = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-    ).toIso8601String();
+    // Obtener la hora ACTUAL (cuando se confirma/omite)
+    final ahora = DateTime.now();
+    
+    print('🕒 Hora real de confirmación: $ahora');
+    print('📅 Hora programada del medicamento: ${med['hora']}');
 
+    // Usar la fecha y hora ACTUALES para el historial
     await _medService.actualizarEstadoToma(
       med['id'],
-      fechaTomaISO,
+      ahora,  // Usar hora actual, no la programada
       confirmacion,
     );
 
-    // Actualizar la UI para reflejar el cambio
+    // Actualizar la UI
     setState(() {});
   }
 
@@ -49,7 +49,7 @@ class _HomePageState extends State<HomePage> {
   Future<bool?> _mostrarDialogoConfirmacion(Map<String, dynamic> med) async {
     return showDialog<bool>(
       context: context,
-      barrierDismissible: true, // Permitir cerrar tocando fuera
+      barrierDismissible: true,
       builder: (context) => AlertDialog(
         title: const Text('¿Tomaste tu medicamento?'),
         content: Text(
@@ -57,11 +57,11 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Omitir
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Omitir', style: TextStyle(color: Colors.redAccent)),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true), // Confirmar
+            onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Confirmar', style: TextStyle(color: Colors.green)),
           ),
         ],
@@ -73,10 +73,8 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _scheduleChecksForToday(); // Programar verificaciones para medicamentos de hoy al iniciar
-
   }
 
-  // Programa las verificaciones para los medicamentos de hoy
   void _scheduleChecksForToday() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -99,7 +97,7 @@ class _HomePageState extends State<HomePage> {
         );
         _medService.scheduleMedicationCheck(
           medId: med['id'],
-          medicationName: med['nombre'], // Nombre del medicamento
+          medicationName: med['nombre'],
           scheduledTime: scheduledTime,
         );
       }
@@ -231,7 +229,7 @@ class _HomePageState extends State<HomePage> {
           if (confirm == true) {
             await _eliminarMed(med['id']);
           }
-          return false; // No se elimina el widget automáticamente
+          return false;
         }
       },
       child: Container(
@@ -246,15 +244,18 @@ class _HomePageState extends State<HomePage> {
           builder: (context, snapshot) {
             String estado = "Pendiente";
             Color estadoColor = Colors.orange;
+            bool puedeCambiar = true;
 
             if (snapshot.connectionState == ConnectionState.active && snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
               final toma = snapshot.data!.docs.first.data() as Map<String, dynamic>;
-              if (toma['estado'] == 'confirmada') {
+              if (toma['estado'] == 'Completada') {
                 estado = "Completado";
                 estadoColor = Colors.green;
-              } else if (toma['estado'] == 'omitida') {
+                puedeCambiar = false;
+              } else if (toma['estado'] == 'Omitida') {
                 estado = "Omitido";
-                estadoColor = Colors.grey;
+                estadoColor = Colors.red;
+                puedeCambiar = false;
               }
             }
 
@@ -271,15 +272,17 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () {
-                        if (estado == "Pendiente") {
-                          _handleToma(med);
-                        }
-                      },
+                      onTap: puedeCambiar ? () => _handleToma(med) : null,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: estadoColor, borderRadius: BorderRadius.circular(8)),
-                        child: Text(estado, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                        decoration: BoxDecoration(
+                          color: estadoColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          estado,
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                        ),
                       ),
                     ),
                   ],
@@ -289,13 +292,19 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     const Icon(Icons.access_time, color: Colors.white70, size: 18),
                     const SizedBox(width: 6),
-                    Text(med['hora'] ?? '--:--', style: const TextStyle(color: Colors.white70, fontSize: 15)),
+                    Text(
+                      med['hora'] ?? '--:--',
+                      style: const TextStyle(color: Colors.white70, fontSize: 15),
+                    ),
                   ],
                 ),
                 if (med['nota'] != null && med['nota'].toString().isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(med['nota'], style: const TextStyle(color: Colors.white, fontSize: 15)),
+                    child: Text(
+                      med['nota'],
+                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                    ),
                   ),
               ],
             );
@@ -317,8 +326,14 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(DateFormat.yMMMMd().format(DateTime.now()), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black54)),
-                  const Text('Hoy', style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text(
+                    DateFormat.yMMMMd().format(DateTime.now()),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black54),
+                  ),
+                  const Text(
+                    'Hoy',
+                    style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
                 ],
               ),
             ),
@@ -354,13 +369,12 @@ class _HomePageState extends State<HomePage> {
         selectedTextColor: Colors.white,
         onDateChange: (date) {
           setState(() => _selectedDate = date);
-          _scheduleChecksForDate(date); // Programar verificaciones para la nueva fecha
+          _scheduleChecksForDate(date);
         },
       ),
     );
   }
 
-  // Programa las verificaciones para una fecha específica
   void _scheduleChecksForDate(DateTime date) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -383,7 +397,7 @@ class _HomePageState extends State<HomePage> {
         );
         _medService.scheduleMedicationCheck(
           medId: med['id'],
-          medicationName: med['nombre'], // Nombre del medicamento
+          medicationName: med['nombre'],
           scheduledTime: scheduledTime,
         );
       }
@@ -391,7 +405,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildEmptyState(String message) {
-    return Center(child: Text(message, style: const TextStyle(fontSize: 16, color: Colors.black54)));
+    return Center(
+      child: Text(
+        message,
+        style: const TextStyle(fontSize: 16, color: Colors.black54),
+      ),
+    );
   }
 
   Future<void> _eliminarMed(String id) async {
@@ -399,15 +418,34 @@ class _HomePageState extends State<HomePage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('medicamentos').doc(id).delete();
-      scaffoldMessenger.showSnackBar(const SnackBar(content: Text("Medicamento eliminado")));
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('medicamentos')
+          .doc(id)
+          .delete();
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text("Medicamento eliminado")),
+      );
     } catch (e) {
       debugPrint("Error al eliminar: $e");
-      scaffoldMessenger.showSnackBar(const SnackBar(content: Text("No se pudo eliminar el medicamento")));
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text("No se pudo eliminar el medicamento")),
+      );
     }
   }
 
-  Widget _editBackground() => Container(color: Colors.blue, alignment: Alignment.centerLeft, padding: const EdgeInsets.symmetric(horizontal: 20), child: const Icon(Icons.edit, color: Colors.white, size: 28));
-  Widget _deleteBackground() => Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.symmetric(horizontal: 20), child: const Icon(Icons.delete, color: Colors.white, size: 28));
+  Widget _editBackground() => Container(
+        color: Colors.blue,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.edit, color: Colors.white, size: 28),
+      );
+
+  Widget _deleteBackground() => Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete, color: Colors.white, size: 28),
+      );
 }
- 
