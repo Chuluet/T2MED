@@ -206,7 +206,7 @@ class UserService extends ChangeNotifier {
         'medicationName': medicationName,
         'dosis': dosis,
         'userName': fullName,
-        'scheduledTime': Timestamp.fromDate(scheduledTime),
+        'horaLimite': Timestamp.fromDate(scheduledTime),
         'minutosGracia': minutosGracia,
         'type': 'sms',
         'status': 'pending', // Estado: pending, sent, cancelled
