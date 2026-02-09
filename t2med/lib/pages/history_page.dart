@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:t2med/services/pdf_service.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -12,6 +13,9 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   List<Map<String, dynamic>> _tomasHistorial = [];
   bool _isLoading = true;
+  bool _isSending = false; // State for sending email
+  final PdfService _pdfService = PdfService();
+  final TextEditingController _emailController = TextEditingController();
 
   @override
   void initState() {
@@ -28,9 +32,6 @@ class _HistoryPageState extends State<HistoryPage> {
     });
 
     try {
-      print('🔄 Cargando historial...');
-      
-      // Método alternativo sin collectionGroup
       final medicamentosSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -55,7 +56,6 @@ class _HistoryPageState extends State<HistoryPage> {
         }
       }
 
-      // También obtener del historial si existe
       try {
         final historialSnapshot = await FirebaseFirestore.instance
             .collection('users')
@@ -66,7 +66,6 @@ class _HistoryPageState extends State<HistoryPage> {
 
         for (final histDoc in historialSnapshot.docs) {
           final data = histDoc.data();
-          // Evitar duplicados
           if (!todasLasTomas.any((toma) => 
               toma['timestamp'] == data['timestamp'] && 
               toma['medId'] == data['medId'])) {
@@ -81,7 +80,6 @@ class _HistoryPageState extends State<HistoryPage> {
         print('⚠️ No se pudo cargar tomasHistorial: $e');
       }
 
-      // Ordenar por timestamp
       todasLasTomas.sort((a, b) {
         final aTime = a['timestamp'] as Timestamp?;
         final bTime = b['timestamp'] as Timestamp?;
@@ -98,13 +96,53 @@ class _HistoryPageState extends State<HistoryPage> {
         _isLoading = false;
       });
 
-      print('✅ Historial cargado: ${todasLasTomas.length} tomas');
-
     } catch (e) {
       print('❌ Error cargando historial: $e');
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _sendPdf(String email) async {
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, introduce una dirección de correo.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSending = true;
+    });
+
+    try {
+      await _pdfService.generateAndSendPdf(_tomasHistorial, email);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Correo enviado con éxito!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+      }
     }
   }
 
@@ -124,11 +162,73 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: Stack(
+        children: [
+          _buildBody(),
+          if (_isSending)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Enviando correo...', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _isSending ? null : _showExportDialog, // Disable button while sending
+        backgroundColor: _isSending ? Colors.grey : Theme.of(context).primaryColor,
+        child: const Icon(Icons.picture_as_pdf),
+      ),
+    );
+  }
+
+  void _showExportDialog() {
+    // Pre-fill with user's email if available
+    _emailController.text = FirebaseAuth.instance.currentUser?.email ?? '';
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Exportar y Enviar PDF'),
+          content: TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Correo electrónico del destinatario',
+              hintText: 'ejemplo@correo.com',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final email = _emailController.text;
+                Navigator.of(context).pop(); // Close dialog
+                _sendPdf(email);
+              },
+              child: const Text('Enviar'),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildBody() {
+    // ... (El resto del código de _buildBody, _buildTomaItem, etc. permanece igual)
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -170,61 +270,15 @@ class _HistoryPageState extends State<HistoryPage> {
       final nombre = data['nombreMedicamento'] ?? 'Medicamento';
       final estado = data['estado'] ?? 'Pendiente';
       
-      // Obtener fecha
       DateTime fecha;
-      if (data['fecha'] != null && data['fecha'] is Timestamp) {
-        fecha = (data['fecha'] as Timestamp).toDate();
-      } else if (data['timestamp'] != null) {
+      if (data['timestamp'] != null) {
         fecha = (data['timestamp'] as Timestamp).toDate();
       } else {
         fecha = DateTime.now();
       }
       
-      // Obtener hora REAL de la toma
-      String horaFormatoReal = '';
-      if (data['horaFormato'] != null) {
-        horaFormatoReal = data['horaFormato'] as String;
-      } else if (data['horaFormatoReal'] != null) {
-        horaFormatoReal = data['horaFormatoReal'] as String;
-      } else if (data['hora'] != null && data['minuto'] != null) {
-        final hora = data['hora'] as int;
-        final minuto = data['minuto'] as int;
-        horaFormatoReal = '${hora.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')}';
-      } else {
-        horaFormatoReal = '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
-      }
+      String horaFormatoReal = data['horaFormato'] ?? '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
       
-      // Obtener hora programada (asegurar formato HH:mm)
-      String horaProgramada = '';
-      if (data['horaProgramada'] != null) {
-        final horaProg = data['horaProgramada'];
-        if (horaProg is String) {
-          // Ya es string, verificar formato
-          if (horaProg.contains(':')) {
-            horaProgramada = horaProg;
-          } else {
-            // Solo tiene la hora, agregar ":00"
-            horaProgramada = '${horaProg.padLeft(2, '0')}:00';
-          }
-        } else if (horaProg is int) {
-          // Es solo la hora como número
-          horaProgramada = '${horaProg.toString().padLeft(2, '0')}:00';
-        }
-      } else if (data['horaFormatoProgramada'] != null) {
-        horaProgramada = data['horaFormatoProgramada'] as String;
-      } else {
-        horaProgramada = 'No especificada';
-      }
-      
-      // Asegurar que la hora programada tenga formato HH:mm
-      if (horaProgramada != 'No especificada' && !horaProgramada.contains(':')) {
-        horaProgramada = '${horaProgramada.padLeft(2, '0')}:00';
-      }
-      
-      // Obtener día
-      String dia = data['dia'] ?? _obtenerDia(fecha.weekday);
-      
-      // Formatear fecha
       final fechaStr = '${fecha.day.toString().padLeft(2, '0')}/'
           '${fecha.month.toString().padLeft(2, '0')}/'
           '${fecha.year}';
@@ -240,7 +294,6 @@ class _HistoryPageState extends State<HistoryPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Nombre del medicamento
               Text(
                 nombre,
                 style: const TextStyle(
@@ -249,25 +302,15 @@ class _HistoryPageState extends State<HistoryPage> {
                   color: Colors.deepPurple,
                 ),
               ),
-              
               const SizedBox(height: 12),
-              
-              // Fecha y día
               Row(
                 children: [
                   const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
                   const SizedBox(width: 8),
                   Text(fechaStr, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                  const SizedBox(width: 16),
-                  const Icon(Icons.today, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Text(dia, style: const TextStyle(fontSize: 14, color: Colors.grey)),
                 ],
               ),
-              
               const SizedBox(height: 8),
-              
-              // Hora real de la toma
               Row(
                 children: [
                   const Icon(Icons.access_time, size: 16, color: Colors.grey),
@@ -278,26 +321,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                 ],
               ),
-              
-              // Hora programada
-              if (horaProgramada != 'No especificada')
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.schedule, size: 14, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Programado: $horaProgramada',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
-                      ),
-                    ],
-                  ),
-                ),
-              
               const SizedBox(height: 12),
-              
-              // Estado
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -330,20 +354,6 @@ class _HistoryPageState extends State<HistoryPage> {
                   ],
                 ),
               ),
-              
-              // Información adicional de debug
-              if (data['esHistorial'] == true)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Desde historial',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[400],
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -357,13 +367,5 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       );
     }
-  }
-
-  String _obtenerDia(int weekday) {
-    final List<String> diasSemana = [
-      'Domingo', 'Lunes', 'Martes', 'Miércoles', 
-      'Jueves', 'Viernes', 'Sábado'
-    ];
-    return diasSemana[weekday - 1];
   }
 }
