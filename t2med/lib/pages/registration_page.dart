@@ -104,7 +104,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 decoration: const InputDecoration(labelText: 'Teléfono de emergencia (opcional)', hintText: '+57 3009876543', prefixIcon: Icon(Icons.phone_in_talk)),
                 validator: (value) {
                   if (value == null || value.isEmpty) return null; // Opcional
-                  String pattern = r'^\+[1-9]\d{0,2}\d{10}$';
+                  String pattern = r'^\+[1-9]\d{0,2}\d{11}$';
                   RegExp regExp = RegExp(pattern);
                   return regExp.hasMatch(value) ? null : 'Debe ser un número de 10 dígitos';
                 },

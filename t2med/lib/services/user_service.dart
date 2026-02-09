@@ -44,8 +44,7 @@ class UserService extends ChangeNotifier {
         'lastName': lastName,
         'email': email,
         'phone': phone,
-        'emergencyPhone':
-            emergencyPhone.isNotEmpty ? emergencyPhone : null,
+        'emergencyPhone': emergencyPhone.isNotEmpty ? emergencyPhone : null,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -83,8 +82,7 @@ class UserService extends ChangeNotifier {
         'lastName': lastName,
         'email': email,
         'phone': phone,
-        'emergencyPhone':
-            emergencyPhone.isNotEmpty ? emergencyPhone : null,
+        'emergencyPhone': emergencyPhone.isNotEmpty ? emergencyPhone : null,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -159,15 +157,17 @@ class UserService extends ChangeNotifier {
     }
   }
 
-  /// NOTIFICAR CONTACTO DE EMERGENCIA
+  /// NOTIFICAR CONTACTO DE EMERGENCIA - VERSIÓN FUSIONADA
   Future<String?> notifyEmergencyContact({
     required String userId,
     required String medicationName,
+    required String dosis,
     required DateTime scheduledTime,
+    required int minutosGracia,
   }) async {
     try {
+      // Obtener datos del usuario
       final userDoc = await _firestore.collection('users').doc(userId).get();
-
       if (!userDoc.exists) return 'Usuario no encontrado.';
 
       final data = userDoc.data()!;
@@ -177,33 +177,46 @@ class UserService extends ChangeNotifier {
         return 'No hay contacto de emergencia registrado.';
       }
 
-      final elapsed =
-          DateTime.now().difference(scheduledTime).inMinutes;
-
-      if (elapsed <= 30) {
-        return 'Aún no ha pasado el tiempo para notificar.';
+      // Verificar si ha pasado el tiempo de gracia configurable
+      final elapsed = DateTime.now().difference(scheduledTime).inMinutes;
+      if (elapsed < minutosGracia) {
+        debugPrint('⏳ Tiempo de gracia no ha pasado aún: $elapsed minutos de $minutosGracia requeridos');
+        return null; // No error, simplemente no es tiempo aún
       }
 
-      final fullName =
-          '${data['name']} ${data['lastName'] ?? ''}';
+      // Crear mensaje según criterio de aceptación
+      final fullName = '${data['name']} ${data['lastName'] ?? ''}'.trim();
+      
+      // Mensaje exacto según criterio: "{nombre} no ha confirmado la toma del medicamento..."
+      final message = '$fullName no ha confirmado la toma del medicamento: $medicationName ($dosis).';
 
-      final time =
-          '${scheduledTime.hour.toString().padLeft(2, '0')}:${scheduledTime.minute.toString().padLeft(2, '0')}';
+      debugPrint('📱 Enviando SMS de emergencia:');
+      debugPrint('   - Para: $emergencyPhone');
+      debugPrint('   - Mensaje: $message');
+      debugPrint('   - Tiempo transcurrido: $elapsed minutos (mínimo requerido: $minutosGracia)');
 
-      final message =
-          'El usuario $fullName no ha confirmado la toma del medicamento '
-          '$medicationName a las $time.';
-
-      await _firestore.collection('messages').add({
+      // Guardar en alertas pendientes para ser procesadas por backend/cloud function
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('alertas_sms_pendientes')
+          .add({
         'to': emergencyPhone,
         'body': message,
+        'medicationName': medicationName,
+        'dosis': dosis,
+        'userName': fullName,
+        'scheduledTime': Timestamp.fromDate(scheduledTime),
+        'minutosGracia': minutosGracia,
         'type': 'sms',
+        'status': 'pending', // Estado: pending, sent, cancelled
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      debugPrint('✅ Alerta SMS guardada en cola de procesamiento');
       return null;
     } catch (e) {
-      debugPrint('Notify error: $e');
+      debugPrint('❌ Error en notifyEmergencyContact: $e');
       return 'Error al enviar la notificación.';
     }
   }

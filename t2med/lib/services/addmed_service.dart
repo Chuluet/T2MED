@@ -22,6 +22,7 @@ class AddMedService extends ChangeNotifier {
     required DateTime fechaFin,
     required String hora,
     required int colorIndex,
+    int tiempoGraciaMinutos = 15, // Nuevo: Recibe el tiempo configurable
   }) async {
     try {
       final user = _auth.currentUser;
@@ -29,10 +30,9 @@ class AddMedService extends ChangeNotifier {
         return 'No hay un usuario autenticado.';
       }
 
-      // Asegurarse de que las notificaciones estén inicializadas
       await initializeNotifications();
 
-      // Guardar en Firestore
+      // Guardar en Firestore incluyendo el tiempo de gracia
       final docRef = await _firestore
           .collection('users')
           .doc(user.uid)
@@ -45,10 +45,11 @@ class AddMedService extends ChangeNotifier {
         'fechaFin': fechaFin.toIso8601String(),
         'hora': hora,
         'colorIndex': colorIndex,
+        'tiempoGraciaMinutos': tiempoGraciaMinutos, // REQUISITO: Configurable
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Programar notificaciones
+      // Programar notificaciones locales
       await _scheduleNotifications(
         medId: docRef.id,
         nombre: nombre,
@@ -65,7 +66,7 @@ class AddMedService extends ChangeNotifier {
     }
   }
 
-  /// Programa las notificaciones para el medicamento
+  /// Programa las notificaciones locales para el teléfono del paciente
   Future<void> _scheduleNotifications({
     required String medId,
     required String nombre,
@@ -74,15 +75,12 @@ class AddMedService extends ChangeNotifier {
     required String hora,
   }) async {
     try {
-      // Convertir string de hora a hour y minute
       final timeParts = hora.split(':');
       final hour = int.parse(timeParts[0]);
       final minute = int.parse(timeParts[1]);
 
-      // Usar el hash del ID del medicamento como ID único
       final notificationId = medId.hashCode.abs();
 
-      // Crear el cuerpo de la notificación
       String body = 'Es hora de tomar $nombre - Dosis: $dosis';
       if (nota.isNotEmpty) {
         body += ' - $nota';
@@ -112,14 +110,12 @@ class AddMedService extends ChangeNotifier {
     required DateTime fechaFin,
     required String hora,
     required int colorIndex,
+    int tiempoGraciaMinutos = 15, // Nuevo
   }) async {
     try {
       final user = _auth.currentUser;
-      if (user == null) {
-        return 'No hay un usuario autenticado.';
-      }
+      if (user == null) return 'No hay un usuario autenticado.';
 
-      // Cancelar notificaciones antiguas
       await _cancelScheduledNotifications(id);
 
       await _firestore
@@ -135,9 +131,9 @@ class AddMedService extends ChangeNotifier {
         'fechaFin': fechaFin.toIso8601String(),
         'hora': hora,
         'colorIndex': colorIndex,
+        'tiempoGraciaMinutos': tiempoGraciaMinutos, // Actualización del tiempo
       });
 
-      // Reprogramar notificaciones con los nuevos datos
       await _scheduleNotifications(
         medId: id,
         nombre: nombre,
@@ -160,7 +156,6 @@ class AddMedService extends ChangeNotifier {
       final user = _auth.currentUser;
       if (user == null) return 'No hay un usuario autenticado.';
 
-      // Cancelar notificaciones antes de eliminar
       await _cancelScheduledNotifications(id);
 
       await _firestore
@@ -178,7 +173,6 @@ class AddMedService extends ChangeNotifier {
     }
   }
 
-  /// Cancela las notificaciones programadas para un medicamento
   Future<void> _cancelScheduledNotifications(String medId) async {
     try {
       final notificationId = medId.hashCode.abs();
@@ -188,7 +182,6 @@ class AddMedService extends ChangeNotifier {
     }
   }
 
-  /// Obtiene todos los medicamentos del usuario autenticado.
   Future<List<Map<String, dynamic>>> getMedicines() async {
     try {
       final user = _auth.currentUser;
