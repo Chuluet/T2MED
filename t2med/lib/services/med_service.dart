@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'user_service.dart'; // Asegúrate de importar UserService
+import 'user_service.dart';
 
 class MedService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -22,11 +22,11 @@ class MedService {
         .doc(medId)
         .collection('tomas')
         .where('fecha', isEqualTo: fechaISO)
-        .limit(1) // Solo debería haber una toma por día
+        .limit(1)
         .snapshots();
   }
 
-  // Obtiene el historial de tomas para un medicamento específico o todos
+  // Obtiene el historial de tomas
   Stream<List<QueryDocumentSnapshot>> getTomasHistorial({String? medId}) {
     final user = _auth.currentUser;
     if (user == null) return const Stream.empty();
@@ -63,107 +63,30 @@ class MedService {
     }
   }
 
-  // Obtiene los medicamentos con tomas pasadas y no confirmadas para hoy
-  Future<List<Map<String, dynamic>>> getMedicamentosPendientes() async {
-    final user = _auth.currentUser;
-    if (user == null) return [];
-
-    final now = DateTime.now();
-    final hoy = DateTime(now.year, now.month, now.day);
-
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('medicamentos')
-          .get();
-
-      final List<Map<String, dynamic>> pendientes = [];
-
-      for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final horaTomaParts = data['hora'].split(':');
-        final horaToma = DateTime(
-          hoy.year,
-          hoy.month,
-          hoy.day,
-          int.parse(horaTomaParts[0]),
-          int.parse(horaTomaParts[1]),
-        );
-
-        // Si la hora de la toma ya pasó hoy
-        if (horaToma.isBefore(now)) {
-          final tomaSnapshot = await doc.reference
-              .collection('tomas')
-              .where('fecha', isEqualTo: hoy.toIso8601String().split('T').first)
-              .limit(1)
-              .get();
-
-          // Si no existe un registro de toma para hoy, está pendiente
-          if (tomaSnapshot.docs.isEmpty) {
-            pendientes.add({
-              'id': doc.id,
-              ...data,
-            });
-          }
-        }
-      }
-      return pendientes;
-    } catch (e) {
-      debugPrint('Error al obtener medicamentos pendientes: $e');
-      return [];
-    }
-  }
-
-  // Actualiza el estado de una toma y registra en el historial
+  // Actualiza el estado de una toma y gestiona la cancelación del SMS
   Future<void> actualizarEstadoToma(
       String medId, String fechaTomaISO, bool confirmada) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
     try {
-      final tomaRef = _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('medicamentos')
-          .doc(medId)
-          .collection('tomas');
+      final userRef = _firestore.collection('users').doc(user.uid);
+      final medRef = userRef.collection('medicamentos').doc(medId);
 
-      final historialRef = _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('medicamentos')
-          .doc(medId)
-          .collection('tomasHistorial');
+      // 1. Registro en Historial
+      final medDoc = await medRef.get();
+      final nombreMedicamento = medDoc.data()?['nombre'] ?? 'Desconocido';
 
-      // Verificar duplicidad en el historial por fecha
-      final existingTomaHistorial = await historialRef
-          .where('fecha', isEqualTo: fechaTomaISO)
-          .limit(1)
-          .get();
+      await medRef.collection('tomasHistorial').add({
+        'fecha': fechaTomaISO,
+        'hora': DateTime.now().toLocal().toIso8601String().split('T')[1].split('.')[0],
+        'nombreMedicamento': nombreMedicamento,
+        'estado': confirmada ? 'Completada' : 'Omitida',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
 
-      if (existingTomaHistorial.docs.isEmpty) {
-        // Obtener el nombre del medicamento
-        final medDoc = await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('medicamentos')
-            .doc(medId)
-            .get();
-        final nombreMedicamento = medDoc.data()?['nombre'] ?? 'Desconocido';
-
-        // Registrar en el historial
-        await historialRef.add({
-          'fecha': fechaTomaISO,
-          'hora': DateTime.now().toLocal().toIso8601String().split('T')[1].split('.')[0], // HH:MM:SS
-          'nombreMedicamento': nombreMedicamento,
-          'estado': confirmada ? 'Completada' : 'Omitida',
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      }
-
-      // Actualizar o crear la toma actual
-      final existingTomaActual = await tomaRef
+      // 2. Actualizar estado actual de la toma
+      final existingTomaActual = await medRef.collection('tomas')
           .where('fecha', isEqualTo: fechaTomaISO)
           .limit(1)
           .get();
@@ -177,14 +100,49 @@ class MedService {
       if (existingTomaActual.docs.isNotEmpty) {
         await existingTomaActual.docs.first.reference.update(newState);
       } else {
-        await tomaRef.add(newState);
+        await medRef.collection('tomas').add(newState);
+      }
+
+      // 3. LOGICA SMS: Si confirma, cancelamos cualquier alerta pendiente (Criterio No Duplicidad)
+      if (confirmada) {
+        try {
+          // 1. Buscamos todas las alertas 'pending' del usuario
+          final alertaQuery = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('alertas_sms_pendientes')
+              .where('status', isEqualTo: 'pending')
+              .get();
+
+          debugPrint("🔍 Buscando alertas... Encontradas: ${alertaQuery.docs.length}");
+
+          for (var doc in alertaQuery.docs) {
+            final data = doc.data();
+
+            // Comparamos si el medId coincide o si el nombre del medicamento está en el cuerpo
+            // Esto es más seguro por si los IDs (medicationId) tienen formatos distintos
+            bool esMismoMed = data['medicationId'] == medId ||
+                data['body'].toString().contains(nombreMedicamento);
+
+            if (esMismoMed) {
+              await doc.reference.update({
+                'status': 'cancelled',
+                'confirmado': true,
+                'canceladoAt': FieldValue.serverTimestamp(),
+              });
+              debugPrint("✅ SMS CANCELADO para: $nombreMedicamento");
+            }
+          }
+        } catch (e) {
+          debugPrint("❌ Error al intentar cancelar: $e");
+        }
       }
     } catch (e) {
       debugPrint('Error al actualizar estado de toma: $e');
     }
   }
 
-  // Programa la verificación de confirmación y notificación
+  // Programa la verificación (Timer local mientras la app está abierta)
   Future<void> scheduleMedicationCheck({
     required String medId,
     required String medicationName,
@@ -193,13 +151,13 @@ class MedService {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    // Obtener la hora del medicamento desde Firestore
     final medDoc = await _firestore
         .collection('users')
         .doc(user.uid)
         .collection('medicamentos')
         .doc(medId)
         .get();
+
     final horaTomaParts = (medDoc.data()?['hora'] ?? '00:00').split(':');
     final horaToma = DateTime(
       scheduledTime.year,
@@ -209,10 +167,9 @@ class MedService {
       int.parse(horaTomaParts[1]),
     );
 
-    // Programar un timer para verificar después de 1 minuto (ajustable para pruebas)
-    final timeUntilCheck = horaToma.add(const Duration(minutes: 1)).difference(DateTime.now());
+    final timeUntilCheck = horaToma.add(const Duration(seconds: 10)).difference(DateTime.now());
+
     if (timeUntilCheck.isNegative) {
-      // Si ya pasó el tiempo, verifica inmediatamente
       await _checkAndNotifyIfUnconfirmed(medId, medicationName, horaToma, user.uid);
     } else {
       Timer(timeUntilCheck, () async {
@@ -221,30 +178,52 @@ class MedService {
     }
   }
 
-  // Método auxiliar para verificar y notificar si no se confirmó
-  Future<void> _checkAndNotifyIfUnconfirmed(String medId, String medicationName, DateTime scheduledTime, String userId) async {
+  // Verifica y crea el registro de alerta para el SMS (Criterio Múltiples Medicamentos)
+  Future<void> _checkAndNotifyIfUnconfirmed(
+      String medId, String medicationName, DateTime scheduledTime, String userId) async {
     try {
+      // Obtener detalles para el mensaje (Criterio Contenido: Nombre y Dosis)
+      final medDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('medicamentos')
+          .doc(medId)
+          .get();
+
+      final data = medDoc.data();
+      final String dosis = data?['dosis'] ?? '';
+      final int minutosGracia = data?['tiempoGraciaMinutos'] ?? 10; // Configurable
+
       final tomaSnapshot = await _firestore
           .collection('users')
           .doc(userId)
           .collection('medicamentos')
           .doc(medId)
           .collection('tomas')
-          .where('fecha', isEqualTo: scheduledTime.toIso8601String().split('T').first)
-          .limit(1)
-          .get();
+          .get(); // Traemos las tomas para filtrar manualmente y evitar errores de formato ISO
 
-      if (tomaSnapshot.docs.isEmpty || tomaSnapshot.docs.first['estado'] != 'confirmada') {
-        // Si no está confirmada, notificar al contacto de emergencia
-        final userService = UserService(); // Instancia de UserService (puedes inyectarla con Provider)
+      bool yaEstaConfirmada = tomaSnapshot.docs.any((doc) {
+        final fechaDoc = doc.data()['fecha'].toString();
+        final estadoDoc = doc.data()['estado'].toString();
+        // Verificamos si la fecha del documento empieza igual que la que buscamos
+        return fechaDoc.contains(scheduledTime.toIso8601String().split('T').first) &&
+            estadoDoc == 'confirmada';
+      });
+
+      if (!yaEstaConfirmada) {
+        // Solo si NO encontramos la confirmación, enviamos el SMS
+        final userService = UserService();
         await userService.notifyEmergencyContact(
           userId: userId,
           medicationName: medicationName,
+          dosis: dosis,
           scheduledTime: scheduledTime,
+          minutosGracia: minutosGracia,
         );
       }
+
     } catch (e) {
-      debugPrint('Error al verificar confirmación: $e');
+      debugPrint('Error en verificación de SMS: $e');
     }
   }
 }

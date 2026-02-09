@@ -84,43 +84,50 @@ class UserService extends ChangeNotifier {
       return 'Ocurrió un error inesperado.';
     }
   }
+  // En user_service.dart
   Future<String?> notifyEmergencyContact({
     required String userId,
     required String medicationName,
+    required String dosis, // Nuevo: Requisito de contenido
     required DateTime scheduledTime,
+    required int minutosGracia, // Nuevo: Tiempo configurable
   }) async {
     try {
       DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
-      if (!userDoc.exists) {
-        return 'Usuario no encontrado.';
-      }
+      if (!userDoc.exists) return 'Usuario no encontrado.';
 
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      String? emergencyPhone = userData['emergencyPhone'] as String?;
+      String? emergencyPhone = userData['emergencyPhone'];
 
       if (emergencyPhone == null || emergencyPhone.isEmpty) {
         return 'No hay contacto de emergencia registrado.';
       }
 
-      Duration timeElapsed = DateTime.now().toLocal().difference(scheduledTime.toLocal());
-      if (timeElapsed.inMinutes <= 30) {
-        return 'Aún no ha pasado el tiempo para notificar (30 min).';
-      }
+      // Nombre completo según criterio de aceptación
+      String userFullName = '${userData['name']} ${userData['lastName'] ?? ''}'.trim();
 
-      String userFullName = '${userData['name']} ${userData['lastName'] ?? ''}';
-      String scheduledTimeStr = '${scheduledTime.toLocal().hour.toString().padLeft(2, '0')}:${scheduledTime.toLocal().minute.toString().padLeft(2, '0')}';
-      String message = 'El usuario $userFullName no ha confirmado la toma del medicamento $medicationName a las $scheduledTimeStr.';
+      // Contenido exacto según criterio: "{nombre} no ha confirmado la toma..."
+      String message = '$userFullName no ha confirmado la toma del medicamento: $medicationName ($dosis).';
 
-      await _firestore.collection('messages').add({
+      // Guardamos en una colección que un Backend (Cloud Function) procesará
+      await _firestore
+          .collection('users')
+          .doc(userId) // Accedemos al documento del usuario
+          .collection('alertas_sms_pendientes') // Subcolección privada del usuario
+          .add({
         'to': emergencyPhone,
         'body': message,
-        'type': 'sms',
+        'userId': userId,
+        'medicationId': medicationName.hashCode.toString(),
+        'scheduledTime': Timestamp.fromDate(scheduledTime),
+        'horaLimite': Timestamp.fromDate(scheduledTime.add(Duration(minutes: minutosGracia))),
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      return null; // Éxito
+      return null;
     } catch (e) {
-      print('Error en notificación: $e');
-      return 'Ocurrió un error inesperado al programar la notificación.';
+      return 'Error al programar: $e';
     }
   }
 }

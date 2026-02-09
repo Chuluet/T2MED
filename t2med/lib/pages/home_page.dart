@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:t2med/pages/profile_page.dart';
 import 'package:t2med/services/med_service.dart';
+import 'package:t2med/services/user_service.dart';
 
 import 'addmed_page.dart';
 import 'editmed_page.dart';
@@ -72,6 +73,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _scheduleChecksForToday(); // Programar verificaciones para medicamentos de hoy al iniciar
+
   }
 
   // Programa las verificaciones para los medicamentos de hoy
