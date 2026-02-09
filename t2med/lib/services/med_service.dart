@@ -13,109 +13,53 @@ class MedService {
   // =========================
   DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
 
+  String _obtenerDia(int weekday) {
+    final List<String> diasSemana = [
+      'Domingo', 'Lunes', 'Martes', 'Miércoles', 
+      'Jueves', 'Viernes', 'Sábado'
+    ];
+    return diasSemana[weekday - 1];
+  }
+
   // =========================
   // STREAM DE TOMA POR DÍA
   // =========================
-  Stream<QuerySnapshot> getTomaStream(String medId, DateTime fecha) {
-    final user = _auth.currentUser;
-    if (user == null) return const Stream.empty();
-
-    final fechaDia = Timestamp.fromDate(_startOfDay(fecha));
-
-    return _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('medicamentos')
-        .doc(medId)
-        .collection('tomas')
-        .where('fecha', isEqualTo: fechaDia)
-        .limit(1)
-        .snapshots();
-  }
-
-  // =========================
-  // HISTORIAL DE TOMAS
-  // =========================
-Stream<List<QueryDocumentSnapshot>> getTomasHistorial() {
-  final user = FirebaseAuth.instance.currentUser;
+ Stream<QuerySnapshot> getTomaStream(String medId, DateTime fecha) {
+  final user = _auth.currentUser;
   if (user == null) return const Stream.empty();
 
-  return FirebaseFirestore.instance
-      .collectionGroup('tomas')
-      .orderBy('fecha', descending: true)
+  final fechaKey =
+      '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}';
+
+  print('🔍 getTomaStream llamado:');
+  print('   - Med ID: $medId');
+  print('   - Fecha: $fecha');
+  print('   - FechaKey: $fechaKey');
+
+  return _firestore
+      .collection('users')
+      .doc(user.uid)
+      .collection('medicamentos')
+      .doc(medId)
+      .collection('tomas')
+      .where('fechaKey', isEqualTo: fechaKey)
+      .limit(1)
       .snapshots()
-      .map((snapshot) => snapshot.docs);
+      .handleError((error) {
+        print('❌ Error en getTomaStream: $error');
+      });
 }
 
-
   // =========================
-  // MEDICAMENTOS PENDIENTES
-  // =========================
-  Future<List<Map<String, dynamic>>> getMedicamentosPendientes() async {
-    final user = _auth.currentUser;
-    if (user == null) return [];
-
-    final now = DateTime.now();
-    final hoy = _startOfDay(now);
-    final hoyTimestamp = Timestamp.fromDate(hoy);
-
-    final medsSnapshot = await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('medicamentos')
-        .get();
-
-    final List<Map<String, dynamic>> pendientes = [];
-
-    for (final doc in medsSnapshot.docs) {
-      final data = doc.data();
-      if (!data.containsKey('hora')) continue;
-
-      final horaParts = data['hora'].split(':');
-      final horaToma = DateTime(
-        hoy.year,
-        hoy.month,
-        hoy.day,
-        int.parse(horaParts[0]),
-        int.parse(horaParts[1]),
-      );
-
-      if (horaToma.isBefore(now)) {
-        final tomaSnapshot = await doc.reference
-            .collection('tomas')
-            .where('fecha', isEqualTo: hoyTimestamp)
-            .limit(1)
-            .get();
-
-        if (tomaSnapshot.docs.isEmpty) {
-          pendientes.add({
-            'id': doc.id,
-            ...data,
-          });
-        }
-      }
-    }
-
-    return pendientes;
-  }
-
-  // =========================
-  // CONFIRMAR / OMITIR TOMA
+  // CONFIRMAR / OMITIR TOMA - VERSIÓN CORREGIDA
   // =========================
   Future<void> actualizarEstadoToma(
     String medId,
-    DateTime fechaToma,
+    DateTime fechaTomaReal,  // Hora REAL de la toma
     bool confirmada,
   ) async {
     final user = _auth.currentUser;
     if (user == null) return;
-
-    final fechaKey =
-        '${fechaToma.year}-${fechaToma.month.toString().padLeft(2, '0')}-${fechaToma.day.toString().padLeft(2, '0')}';
-
-    final fechaTimestamp = Timestamp.fromDate(
-      DateTime(fechaToma.year, fechaToma.month, fechaToma.day),
-    );
 
     try {
       final medRef = _firestore
@@ -125,50 +69,104 @@ Stream<List<QueryDocumentSnapshot>> getTomasHistorial() {
           .doc(medId);
 
       final tomasRef = medRef.collection('tomas');
-      final historialRef = _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('tomasHistorial');
-
-      // =====================
-      // TOMA DEL DÍA
-      // =====================
-      final tomaQuery = await tomasRef
-          .where('fechaKey', isEqualTo: fechaKey)
-          .limit(1)
-          .get();
-
-      if (tomaQuery.docs.isNotEmpty) {
-        await tomaQuery.docs.first.reference.update({
-          'estado': confirmada ? 'confirmada' : 'omitida',
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      } else {
-        await tomasRef.add({
-          'fecha': fechaTimestamp,
-          'fechaKey': fechaKey,
-          'estado': confirmada ? 'confirmada' : 'omitida',
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+      
+      // Obtener datos del medicamento
+      final medDoc = await medRef.get();
+      if (!medDoc.exists) {
+        print('❌ Medicamento no encontrado: $medId');
+        return;
       }
 
-      // =====================
-      // HISTORIAL (SIEMPRE)
-      // =====================
-      final medDoc = await medRef.get();
+      final medData = medDoc.data() ?? {};
+      final nombreMedicamento = medData['nombre'] ?? 'Medicamento';
 
-      await historialRef.add({
+      // Crear fechaKey basada en la fecha REAL
+      final fechaKey =
+          '${fechaTomaReal.year}-${fechaTomaReal.month.toString().padLeft(2, '0')}-${fechaTomaReal.day.toString().padLeft(2, '0')}';
+
+      // Obtener la hora programada COMPLETA (ej: "19:30")
+      final horaProgramada = medData['hora'] ?? '00:00';
+      
+      // Asegurarse de que la hora programada tenga formato correcto HH:mm
+      String horaProgramadaFormateada = horaProgramada;
+      if (!horaProgramada.contains(':')) {
+        // Si solo tiene la hora sin minutos, agregar ":00"
+        horaProgramadaFormateada = '${horaProgramada.padLeft(2, '0')}:00';
+      }
+
+      print('🕒 Hora programada del medicamento: $horaProgramadaFormateada');
+
+      // Datos para la toma en medicamentos/tomas
+      final tomaData = {
+        'userId': user.uid,
         'medId': medId,
-        'fecha': fechaTimestamp,
+        'fecha': Timestamp.fromDate(fechaTomaReal),
         'fechaKey': fechaKey,
-        'hora':
-            '${fechaToma.hour.toString().padLeft(2, '0')}:${fechaToma.minute.toString().padLeft(2, '0')}',
-        'nombreMedicamento': medDoc['nombre'] ?? 'Medicamento',
+        'dia': _obtenerDia(fechaTomaReal.weekday),
+        'horaReal': fechaTomaReal.hour,
+        'minutoReal': fechaTomaReal.minute,
+        'horaProgramada': horaProgramadaFormateada, // Guardar como STRING completo
+        'horaFormatoReal': '${fechaTomaReal.hour.toString().padLeft(2, '0')}:${fechaTomaReal.minute.toString().padLeft(2, '0')}',
+        'horaFormatoProgramada': horaProgramadaFormateada,
+        'nombreMedicamento': nombreMedicamento,
         'estado': confirmada ? 'Completada' : 'Omitida',
         'timestamp': FieldValue.serverTimestamp(),
-      });
+      };
+
+      print('💾 Guardando toma con hora programada: $horaProgramadaFormateada');
+
+      // 1. Guardar en medicamentos/tomas (para pantalla principal)
+      try {
+        final query = await tomasRef
+            .where('fechaKey', isEqualTo: fechaKey)
+            .limit(1)
+            .get();
+
+        if (query.docs.isNotEmpty) {
+          await query.docs.first.reference.update(tomaData);
+          print('✅ Toma actualizada en medicamentos/tomas');
+        } else {
+          await tomasRef.add(tomaData);
+          print('✅ Toma guardada en medicamentos/tomas');
+        }
+      } catch (e) {
+        print('❌ Error guardando en medicamentos/tomas: $e');
+      }
+
+      // 2. Guardar en tomasHistorial (para historial)
+      try {
+        final historialRef = _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('tomasHistorial');
+        
+        final historialData = {
+          'medId': medId,
+          'fecha': Timestamp.fromDate(fechaTomaReal),
+          'fechaKey': fechaKey,
+          'dia': _obtenerDia(fechaTomaReal.weekday),
+          'hora': fechaTomaReal.hour,
+          'minuto': fechaTomaReal.minute,
+          'horaFormato': '${fechaTomaReal.hour.toString().padLeft(2, '0')}:${fechaTomaReal.minute.toString().padLeft(2, '0')}',
+          'horaProgramada': horaProgramadaFormateada, // Guardar como STRING completo
+          'nombreMedicamento': nombreMedicamento,
+          'estado': confirmada ? 'Completada' : 'Omitida',
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        await historialRef.add(historialData);
+        print('✅ Registro guardado en historial');
+        print('   - Hora real: ${historialData['horaFormato']}');
+        print('   - Hora programada: ${historialData['horaProgramada']}');
+
+      } catch (e) {
+        print('⚠️ Advertencia: No se pudo guardar en tomasHistorial');
+        print('   Error: $e');
+      }
+
     } catch (e) {
-      debugPrint(' Error historial: $e');
+      print('❌ Error general en actualizarEstadoToma: $e');
+      rethrow;
     }
   }
 
@@ -232,7 +230,7 @@ Stream<List<QueryDocumentSnapshot>> getTomasHistorial() {
           .get();
 
       if (tomaSnapshot.docs.isEmpty ||
-          tomaSnapshot.docs.first['estado'] != 'confirmada') {
+          tomaSnapshot.docs.first['estado'] != 'Completada') {
         final userService = UserService();
         await userService.notifyEmergencyContact(
           userId: userId,
