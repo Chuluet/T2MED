@@ -51,6 +51,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
       // Obtener historial completo (el backend ya incluye nombreMedicamento)
       final historial = await medService.getHistorial();
+      
+
 
       // Asegurar que cada toma tenga un campo 'fecha' en formato String ISO para ordenar
       final historialProcesado = historial.map((toma) {

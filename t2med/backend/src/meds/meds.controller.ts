@@ -67,4 +67,34 @@ export class MedsController {
     const userId = req.user.uid;
     return this.medsService.obtenerHistorial(userId);
   }
+
+  // ==================== INVENTARIO ====================
+
+@Post('inventory/create')
+async createInventory(@Req() req, @Body() body: any) {
+  const userId = req.user.uid;
+  return this.medsService.createInventoryItem(userId, body);
+}
+
+@Get('inventory')
+async getInventory(@Req() req) {
+  const userId = req.user.uid;
+  return this.medsService.getInventory(userId);
+}
+
+@Put('inventory/:itemId')
+async updateInventory(
+  @Req() req,
+  @Param('itemId') itemId: string,
+  @Body() body: any
+) {
+  const userId = req.user.uid;
+  return this.medsService.updateInventoryItem(userId, itemId, body);
+}
+
+@Delete('inventory/:itemId')
+async deleteInventory(@Req() req, @Param('itemId') itemId: string) {
+  const userId = req.user.uid;
+  return this.medsService.deleteInventoryItem(userId, itemId);
+}
 }

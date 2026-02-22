@@ -184,4 +184,101 @@ class MedicationService extends ChangeNotifier {
   }
   return [];
 }
+
+// ==================== INVENTARIO ====================
+
+Future<List<Map<String, dynamic>>> getInventory() async {
+  final token = await _getToken();
+  if (token == null) return [];
+
+  try {
+    final response = await http.get(
+      Uri.parse('$baseUrl/meds/inventory'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    }
+  } catch (e) {
+    print('Error en getInventory: $e');
+  }
+
+  return [];
+}
+
+Future<String?> addInventoryItem(Map<String, dynamic> data) async {
+  final token = await _getToken();
+  if (token == null) return 'No autenticado';
+
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/meds/inventory/create'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      notifyListeners();
+      return null;
+    }
+
+    final error = jsonDecode(response.body);
+    return error['message'] ?? 'Error al crear item';
+  } catch (e) {
+    return 'Error de red: $e';
+  }
+}
+
+Future<String?> updateInventoryItem(String id, Map<String, dynamic> data) async {
+  final token = await _getToken();
+  if (token == null) return 'No autenticado';
+
+  try {
+    final response = await http.put(
+      Uri.parse('$baseUrl/meds/inventory/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200) {
+      notifyListeners();
+      return null;
+    }
+
+    final error = jsonDecode(response.body);
+    return error['message'] ?? 'Error al actualizar';
+  } catch (e) {
+    return 'Error de red: $e';
+  }
+}
+
+Future<String?> deleteInventoryItem(String id) async {
+  final token = await _getToken();
+  if (token == null) return 'No autenticado';
+
+  try {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/meds/inventory/$id'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      notifyListeners();
+      return null;
+    }
+
+    final error = jsonDecode(response.body);
+    return error['message'] ?? 'Error al eliminar';
+  } catch (e) {
+    return 'Error de red: $e';
+  }
+}
 }

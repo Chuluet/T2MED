@@ -78,6 +78,20 @@ export class MedsService {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
     await historialRef.set(data);
+    // 🔽 Restar 1 del inventario
+const inventarioRef = this.db
+  .collection('users')
+  .doc(userId)
+  .collection('inventario')
+  .doc(medId);
+
+const inventarioDoc = await inventarioRef.get();
+
+if (inventarioDoc.exists) {
+  await inventarioRef.update({
+    cantidad: admin.firestore.FieldValue.increment(-1),
+  });
+}
     return { message: 'Toma registrada correctamente' };
   }
 
@@ -108,4 +122,58 @@ export class MedsService {
       ...doc.data(),
     }));
   }
+
+  // ==================== INVENTARIO ====================
+
+async createInventoryItem(userId: string, data: any) {
+  const { medId, ...rest } = data;
+
+  await this.db
+    .collection('users')
+    .doc(userId)
+    .collection('inventario')
+    .doc(medId) // 👈 usamos el mismo ID del medicamento
+    .set({
+      ...rest,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+  return { message: 'Inventario creado correctamente' };
+}
+
+async getInventory(userId: string) {
+  const snapshot = await this.db
+    .collection('users')
+    .doc(userId)
+    .collection('inventario')
+    .orderBy('createdAt', 'desc')
+    .get();
+
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+}
+
+async updateInventoryItem(userId: string, itemId: string, data: any) {
+  await this.db
+    .collection('users')
+    .doc(userId)
+    .collection('inventario')
+    .doc(itemId)
+    .update(data);
+
+  return { message: 'Inventario actualizado correctamente' };
+}
+
+async deleteInventoryItem(userId: string, itemId: string) {
+  await this.db
+    .collection('users')
+    .doc(userId)
+    .collection('inventario')
+    .doc(itemId)
+    .delete();
+
+  return { message: 'Item eliminado del inventario' };
+}
 }

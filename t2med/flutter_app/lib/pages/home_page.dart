@@ -7,6 +7,7 @@ import 'package:t2med/pages/profile_page.dart';
 import 'package:t2med/services/med_service.dart';
 import 'addmed_page.dart';
 import 'editmed_page.dart';
+import 'pastillero_page.dart';
 import '../services/notification_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -414,33 +415,66 @@ class _HomePageState extends State<HomePage> {
           Positioned(
             top: 30,
             right: 20,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddmedPage(),
+            child: Row(
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddmedPage(),
+                      ),
+                    ).then((_) => _loadMedicines());
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    elevation: 6,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                   ),
-                ).then((_) => _loadMedicines());
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
+                  child: const Text(
+                    '+ MED',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-                elevation: 6,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PastilleroPage(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    elevation: 6,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                  ),
+                  child: const Text(
+                    'Pastillero',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-              ),
-              child: const Text(
-                '+ MED',
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white,
-                ),
-              ),
+              ],
             ),
           ),
         ],
