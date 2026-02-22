@@ -136,11 +136,13 @@ class _HistoryPageState extends State<HistoryPage> {
           'Historial de Tomas',
           style: TextStyle(color: Colors.white),
         ),
+        iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: Colors.deepPurple,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _cargarHistorial,
+            color: Colors.white,
           ),
         ],
       ),
@@ -169,7 +171,7 @@ class _HistoryPageState extends State<HistoryPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _isSending ? null : _showExportDialog,
         backgroundColor: _isSending ? Colors.grey : Theme.of(context).primaryColor,
-        child: const Icon(Icons.picture_as_pdf),
+        child: const Icon(Icons.picture_as_pdf, color: Colors.white),
       ),
     );
   }
@@ -281,7 +283,7 @@ class _HistoryPageState extends State<HistoryPage> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                  const Icon(Icons.calendar_today, size: 16, color: Color.fromARGB(255, 97, 97, 97)),
                   const SizedBox(width: 8),
                   Text(fechaStr, style: const TextStyle(fontSize: 14, color: Colors.grey)),
                 ],
