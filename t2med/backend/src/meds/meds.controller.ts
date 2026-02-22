@@ -45,7 +45,7 @@ export class MedsController {
     return this.medsService.registrarToma(
       userId,
       medId,
-      body.nombreMedicamento, // Asegúrate de enviar el nombre del medicamento desde el frontend
+      body.nombreMedicamento,
       body.estado,
       body.fecha,
       body.horaProgramada

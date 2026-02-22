@@ -9,6 +9,7 @@ import '../widgets/profile/profile_section_card.dart';
 import 'history_page.dart';
 import 'login_page.dart';
 import 'edit_user_page.dart';
+import 'package:t2med/pages/pastillero_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -78,6 +79,17 @@ class _ProfilePageState extends State<ProfilePage> {
                       context,
                       MaterialPageRoute(builder: (_) => const HistoryPage()),
                     );
+                  },
+                ),
+                ProfileOptionTile(
+                  icon: Icons.medication,
+                  title: 'My Pillbox',
+                  subtitle: 'Manage your medication inventory',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PastilleroPage()),
+                   );
                   },
                 ),
                 const Divider(height: 1),

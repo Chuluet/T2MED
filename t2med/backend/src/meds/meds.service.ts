@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MedsService {
   private db = admin.firestore();
+  constructor(
+  private readonly notificationsService: NotificationsService,
+) {}
 
   // ==================== CRUD de medicamentos ====================
 
@@ -59,26 +63,26 @@ export class MedsService {
     medId: string,
     nombreMedicamento: string,
     estado: string,
-    fechaStr: string,        // formato 'YYYY-MM-DD'
-    horaProgramada: string,   // hora del medicamento
+    fechaStr: string,        
+    horaProgramada: string,  
   ) {
     const historialRef = this.db
       .collection('users')
       .doc(userId)
       .collection('tomasHistorial')
-      .doc(); // ID automático
+      .doc(); 
 
     const data = {
       medicamentoId: medId,
       nombreMedicamento,
       estado,
-      fecha: admin.firestore.Timestamp.fromDate(new Date()), // momento de la acción
+      fecha: admin.firestore.Timestamp.fromDate(new Date()), 
       fechaStr,
       horaProgramada,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
     await historialRef.set(data);
-    // 🔽 Restar 1 del inventario
+    
 const inventarioRef = this.db
   .collection('users')
   .doc(userId)
@@ -132,7 +136,7 @@ async createInventoryItem(userId: string, data: any) {
     .collection('users')
     .doc(userId)
     .collection('inventario')
-    .doc(medId) // 👈 usamos el mismo ID del medicamento
+    .doc(medId)
     .set({
       ...rest,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -156,12 +160,39 @@ async getInventory(userId: string) {
 }
 
 async updateInventoryItem(userId: string, itemId: string, data: any) {
-  await this.db
+  const inventoryRef = this.db
     .collection('users')
     .doc(userId)
     .collection('inventario')
-    .doc(itemId)
-    .update(data);
+    .doc(itemId);
+
+  const doc = await inventoryRef.get();
+
+  if (!doc.exists) {
+    throw new Error('Item no encontrado');
+  }
+
+  const inventory = doc.data() as any;
+
+  
+  let nuevaCantidad = inventory.cantidad;
+
+  if (data.cantidad !== undefined) {
+    nuevaCantidad = data.cantidad;
+  }
+
+  await inventoryRef.update({
+    ...data,
+  });
+
+  
+  if (nuevaCantidad <= inventory.limiteBajo) {
+    await this.notificationsService.sendLowStockNotification(
+      userId,
+      inventory.nombre,
+      nuevaCantidad,
+    );
+  }
 
   return { message: 'Inventario actualizado correctamente' };
 }
