@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:t2med/pages/medical_conditions_page.dart';
 import '../services/user_service.dart';
 import '../widgets/profile/profile_header.dart';
 import '../widgets/profile/profile_option_tile.dart';
@@ -67,6 +68,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
             ProfileSectionCard(
               children: [
+               
                 ProfileOptionTile(
                   icon: Icons.history,
                   title: 'Medication History',
@@ -75,6 +77,18 @@ class _ProfilePageState extends State<ProfilePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const HistoryPage()),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                ProfileOptionTile(
+                  icon: Icons.heart_broken_sharp,
+                  title: 'Medical Conditions',
+                  subtitle: 'View medical conditions',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MedicalConditionsPage()),
                     );
                   },
                 ),
