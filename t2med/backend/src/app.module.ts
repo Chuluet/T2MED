@@ -7,6 +7,7 @@ import { MedicationSchedulerService } from './notifications/medication-scheduler
 import { NotificationsService } from './notifications/notifications.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConditionModule } from './med_conditions/condition.module';
+import {AppointmentsModule} from "./appointments/appointments.module";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ConditionModule } from './med_conditions/condition.module';
     PdfModule,
     ConditionModule,
     ScheduleModule.forRoot(),
+    AppointmentsModule
   ],
   providers: [MedicationSchedulerService, NotificationsService],
 })
