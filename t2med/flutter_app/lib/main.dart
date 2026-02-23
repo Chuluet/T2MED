@@ -11,6 +11,7 @@ import 'package:t2med/services/med_service.dart';
 import 'package:t2med/services/notification_service.dart';
 import 'package:t2med/services/pdf_service.dart';
 import 'firebase_options.dart';
+import 'package:t2med/services/appointment_service.dart';
 
 ///  *********************************************
 ///     NOTIFICATION CONTROLLER
@@ -83,11 +84,11 @@ void main() async {
   AwesomeNotifications().setListeners(
     onActionReceivedMethod: NotificationController.onActionReceivedMethod,
     onNotificationCreatedMethod:
-        NotificationController.onNotificationCreatedMethod,
+    NotificationController.onNotificationCreatedMethod,
     onNotificationDisplayedMethod:
-        NotificationController.onNotificationDisplayedMethod,
+    NotificationController.onNotificationDisplayedMethod,
     onDismissActionReceivedMethod:
-        NotificationController.onDismissActionReceivedMethod,
+    NotificationController.onDismissActionReceivedMethod,
   );
 
   // Solicitar permisos para notificaciones
@@ -108,6 +109,7 @@ class AppState extends StatelessWidget {
       providers: [
         // Servicios (orden alfabético)
         ChangeNotifierProvider(create: (_) => MedicationService()),
+        ChangeNotifierProvider(create: (_) => AppointmentService()),
         Provider(create: (_) => NotificationService()),
         Provider(create: (_) => PdfService()),
         ChangeNotifierProvider(create: (_) => UserService()),
