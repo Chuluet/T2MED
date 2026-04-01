@@ -1,7 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:t2med/pages/forgot_password_page.dart';
-import 'package:t2med/widgets/input_decorations.dart';
+
+// Widgets reutilizables
+import 'package:t2med/widgets/login/app_logo_header.dart';
+import 'package:t2med/widgets/login/rounded_input_field.dart';
+import 'package:t2med/widgets/login/auth_buttons.dart';
+import 'package:t2med/widgets/login/decorative_background.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,7 +29,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Mostrar mensaje opcional enviado por otras pantallas (ej: 'Revisa tu correo')
+    // Mostrar mensaje opcional enviado por otras pantallas
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is String && args.isNotEmpty) {
@@ -34,218 +39,159 @@ class _LoginPageState extends State<LoginPage> {
       }
     });
 
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SizedBox(
-        width: double.infinity,
-        height: double.infinity,
-        child: Stack(
-          children: [
-            cajamorada(size),
-            SingleChildScrollView(
+      backgroundColor: const Color(0xFFEAEFF5),
+      body: Stack(
+        children: [
+          // Fondo limpio
+          const DecorativeBackground(),
+
+          // Contenido distribuido verticalmente en toda la pantalla
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Column(
                 children: [
-                  const SizedBox(height: 250),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    margin: const EdgeInsets.symmetric(horizontal: 30),
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
-                          spreadRadius: 3,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 10),
-                        Text('Login', style: Theme.of(context).textTheme.headlineLarge),
-                        const SizedBox(height: 60),
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              TextFormField(
-                                controller: _emailController,
-                                autovalidateMode: AutovalidateMode.onUserInteraction,
-                                autocorrect: false,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: InputDecorations.inputDecorations(
-                                  hintText: 'ejemplo@gmail.com',
-                                  labelText: 'Correo electrónico',
-                                  prefixIcon: const Icon(Icons.email_outlined),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'El correo es obligatorio';
-                                  }
-                                  String pattern = r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
-                                  RegExp regExp = RegExp(pattern);
-                                  return regExp.hasMatch(value) ? null : 'El formato del correo no es válido';
-                                },
-                              ),
-                              const SizedBox(height: 50),
-                              TextFormField(
-                                controller: _passwordController,
-                                autovalidateMode: AutovalidateMode.onUserInteraction,
-                                autocorrect: false,
-                                obscureText: true,
-                                decoration: InputDecorations.inputDecorations(
-                                  hintText: '********',
-                                  labelText: 'Contraseña',
-                                  prefixIcon: const Icon(Icons.lock_outline),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "La contraseña es obligatoria";
-                                  }
-                                  return null; // Validación simple, Firebase dará el error específico
-                                },
-                              ),
-                              const SizedBox(height: 50),
-                              MaterialButton(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                disabledColor: Colors.grey,
-                                elevation: 0,
-                                color: Colors.deepPurple,
-                                onPressed: () async {
-                                  FocusScope.of(context).unfocus();
+                  // Sección superior: logo + avatar (ocupa ~40% del espacio)
+                  Expanded(
+                    flex: 4,
+                    child: Center(child: const AppLogoHeader()),
+                  ),
 
-                                  if (!_formKey.currentState!.validate()) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Complete todos los campos')),
-                                    );
-                                    return;
-                                  }
-
-                                  try {
-                                    // Iniciar sesión con Firebase Auth
-                                    await FirebaseAuth.instance.signInWithEmailAndPassword(
-                                      email: _emailController.text.trim(),
-                                      password: _passwordController.text.trim(),
-                                    );
-
-                                    // Opcional: obtener perfil del usuario con UserService (puedes hacerlo en Home)
-                                    // final userService = context.read<UserService>();
-                                    // await userService.getUserProfile(user.uid);
-
-                                    if (mounted) {
-                                      Navigator.pushNamedAndRemoveUntil(context, 'home', (route) => false);
-                                    }
-                                  } on FirebaseAuthException catch (e) {
-                                    String errorMessage = 'Error al iniciar sesión';
-                                    if (e.code == 'user-not-found') {
-                                      errorMessage = 'No existe una cuenta con este correo';
-                                    } else if (e.code == 'wrong-password') {
-                                      errorMessage = 'Contraseña incorrecta';
-                                    } else if (e.code == 'invalid-email') {
-                                      errorMessage = 'Correo inválido';
-                                    } else if (e.code == 'user-disabled') {
-                                      errorMessage = 'Esta cuenta ha sido deshabilitada';
-                                    }
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(errorMessage)),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Error: ${e.toString()}')),
-                                      );
-                                    }
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 15),
-                                  child: const Text(
-                                    'Ingresar',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
+                  // Sección central: formulario
+                  Expanded(
+                    flex: 5,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Campo correo
+                          RoundedInputField(
+                            controller: _emailController,
+                            hintText: 'Correo electrónico',
+                            prefixIcon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'El correo es obligatorio';
+                              }
+                              const pattern =
+                                  r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@'
+                                  r'((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|'
+                                  r'(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
+                              final regExp = RegExp(pattern);
+                              return regExp.hasMatch(value)
+                                  ? null
+                                  : 'El formato del correo no es válido';
+                            },
                           ),
-                        ),
-                      ],
+
+                          const SizedBox(height: 14),
+
+                          // Campo contraseña
+                          RoundedInputField(
+                            controller: _passwordController,
+                            hintText: 'Contraseña',
+                            prefixIcon: Icons.lock_outline,
+                            obscureText: true,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'La contraseña es obligatoria';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Botón primario
+                          PrimaryButton(
+                            label: 'INICIAR SESIÓN',
+                            onPressed: _handleLogin,
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Botón secundario
+                          OutlinedActionButton(
+                            label: 'CREAR CUENTA',
+                            onPressed: () =>
+                                Navigator.pushNamed(context, 'register'),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Enlace olvidé contraseña
+                          LinkTextButton(
+                            label: '¿Olvidaste tu contraseña?',
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const ForgotPasswordPage()),
+                              );
+                            },
+                            textColor: const Color(0xFF2C3E50),
+                            fontSize: 13,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 40),
-                  TextButton(
-                    onPressed: () => Navigator.pushNamed(context, 'register'),
-                    child: const Text(
-                      "Crear una nueva cuenta",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
-                      );
-                    },
-                    child: const Text(
-                      '¿Olvidaste tu contraseña?',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.deepPurple),
-                    ),
-                  ),
+
+                  // Espacio inferior para respirar
+                  const Expanded(flex: 1, child: SizedBox()),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Container cajamorada(Size size) {
-    return Container(
-      width: double.infinity,
-      height: size.height * 0.3,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color.fromRGBO(63, 63, 156, 1),
-            Color.fromRGBO(90, 70, 178, 1),
-          ],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(top: 90, left: 30, child: _burbuja()),
-          Positioned(top: -40, left: -30, child: _burbuja()),
-          Positioned(top: -50, right: -20, child: _burbuja()),
-          Positioned(bottom: -50, left: 10, child: _burbuja()),
-          Positioned(bottom: 120, right: 20, child: _burbuja()),
-          Positioned(bottom: 50, right: 150, child: _burbuja()),
+          ),
         ],
       ),
     );
   }
-}
 
-Container _burbuja() {
-  return Container(
-    width: 100,
-    height: 100,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(100),
-      color: const Color.fromRGBO(255, 255, 255, 0.05),
-    ),
-  );
+  Future<void> _handleLogin() async {
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Complete todos los campos')),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, 'home', (route) => false);
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Error al iniciar sesión';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No existe una cuenta con este correo';
+      } else if (e.code == 'wrong-password') {
+        errorMessage = 'Contraseña incorrecta';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'Correo inválido';
+      } else if (e.code == 'user-disabled') {
+        errorMessage = 'Esta cuenta ha sido deshabilitada';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
 }

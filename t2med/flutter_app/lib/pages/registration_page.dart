@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // ← Agregar para usar context.read
+import 'package:provider/provider.dart';
 import 'package:t2med/services/user_service.dart';
+
+// Widgets reutilizables
+import 'package:t2med/widgets/login/app_logo_header.dart';
+import 'package:t2med/widgets/login/rounded_input_field.dart';
+import 'package:t2med/widgets/login/auth_buttons.dart';
+import 'package:t2med/widgets/login/decorative_background.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -12,231 +18,267 @@ class RegistrationPage extends StatefulWidget {
 class _RegistrationPageState extends State<RegistrationPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _emergencyPhoneController =
-      TextEditingController();
+  final TextEditingController _emergencyPhoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _emailController.dispose();
     _nameController.dispose();
     _lastNameController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
     _emergencyPhoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Registro'),
+      backgroundColor: const Color(0xFFEAEFF5),
+      body: Stack(
+        children: [
+          const DecorativeBackground(),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                children: [
+                  const SizedBox(height: 36),
+
+                  // Header reutilizable con subtítulo "Crear cuenta"
+                  const _RegistrationHeader(),
+
+                  const SizedBox(height: 32),
+
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        // Nombre y Apellido en fila
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RoundedInputField(
+                                controller: _nameController,
+                                hintText: 'Nombre',
+                                prefixIcon: Icons.person_outline,
+                                validator: (value) => (value == null || value.isEmpty)
+                                    ? 'Obligatorio'
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: RoundedInputField(
+                                controller: _lastNameController,
+                                hintText: 'Apellido',
+                                prefixIcon: Icons.person_outline,
+                                validator: (value) => (value == null || value.isEmpty)
+                                    ? 'Obligatorio'
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        RoundedInputField(
+                          controller: _emailController,
+                          hintText: 'Correo electrónico',
+                          prefixIcon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            const pattern =
+                                r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@'
+                                r'((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|'
+                                r'(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
+                            return RegExp(pattern).hasMatch(value ?? '')
+                                ? null
+                                : 'El formato del correo no es válido';
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        RoundedInputField(
+                          controller: _phoneController,
+                          hintText: 'Teléfono de contacto (+57...)',
+                          prefixIcon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            const pattern = r'^\+[1-9]\d{0,2}\d{10}$';
+                            return RegExp(pattern).hasMatch(value ?? '')
+                                ? null
+                                : 'Número con prefijo internacional';
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        RoundedInputField(
+                          controller: _emergencyPhoneController,
+                          hintText: 'Tel. emergencia (opcional)',
+                          prefixIcon: Icons.phone_in_talk_outlined,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return null;
+                            const pattern = r'^\+[1-9]\d{0,2}\d{10}$';
+                            return RegExp(pattern).hasMatch(value)
+                                ? null
+                                : 'Número con prefijo internacional';
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        RoundedInputField(
+                          controller: _passwordController,
+                          hintText: 'Contraseña',
+                          prefixIcon: Icons.lock_outline,
+                          obscureText: true,
+                          validator: (value) {
+                            if (value == null || value.length < 8) {
+                              return 'Mínimo 8 caracteres, una mayúscula y un número';
+                            }
+                            if (!value.contains(RegExp(r'[A-Z]'))) {
+                              return 'Mínimo 8 caracteres, una mayúscula y un número';
+                            }
+                            if (!value.contains(RegExp(r'[0-9]'))) {
+                              return 'Mínimo 8 caracteres, una mayúscula y un número';
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        RoundedInputField(
+                          controller: _confirmPasswordController,
+                          hintText: 'Confirmar contraseña',
+                          prefixIcon: Icons.lock_outline,
+                          obscureText: true,
+                          validator: (value) => (value != _passwordController.text)
+                              ? 'Las contraseñas no coinciden'
+                              : null,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        PrimaryButton(
+                          label: 'REGISTRARSE',
+                          onPressed: _handleRegister,
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Enlace para volver al login
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              '¿Ya tienes cuenta? ',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF2C3E50),
+                              ),
+                            ),
+                            LinkTextButton(
+                              label: 'Iniciar sesión',
+                              onPressed: () => Navigator.pop(context),
+                              textColor: const Color(0xFF1E88E5),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Nombre
-              TextFormField(
-                controller: _nameController,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    hintText: 'Juan',
-                    prefixIcon: Icon(Icons.person_outline)),
-                validator: (value) =>
-                    (value == null || value.isEmpty) ? 'El nombre es obligatorio' : null,
-              ),
-              const SizedBox(height: 20),
+    );
+  }
 
-              // Apellido
-              TextFormField(
-                controller: _lastNameController,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                    labelText: 'Apellido',
-                    hintText: 'Pérez',
-                    prefixIcon: Icon(Icons.person_outline)),
-                validator: (value) =>
-                    (value == null || value.isEmpty) ? 'El apellido es obligatorio' : null,
-              ),
-              const SizedBox(height: 20),
+  Future<void> _handleRegister() async {
+    FocusScope.of(context).unfocus();
 
-              // Correo
-              TextFormField(
-                controller: _emailController,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                    labelText: 'Correo electrónico',
-                    hintText: 'ejemplo@gmail.com',
-                    prefixIcon: Icon(Icons.email_outlined)),
-                validator: (value) {
-                  String pattern =
-                      r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
-                  RegExp regExp = RegExp(pattern);
-                  return regExp.hasMatch(value ?? '')
-                      ? null
-                      : 'El formato del correo no es válido';
-                },
-              ),
-              const SizedBox(height: 20),
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Por favor, complete todos los campos correctamente')),
+      );
+      return;
+    }
 
-              // Teléfono
-              TextFormField(
-                controller: _phoneController,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                    labelText: 'Teléfono de contacto',
-                    hintText: '+57 3001234567',
-                    prefixIcon: Icon(Icons.phone)),
-                validator: (value) {
-                  String pattern = r'^\+[1-9]\d{0,2}\d{10}$';
-                  RegExp regExp = RegExp(pattern);
-                  return regExp.hasMatch(value ?? '')
-                      ? null
-                      : 'Debe ser un número de 10 dígitos con prefijo internacional';
-                },
-              ),
-              const SizedBox(height: 20),
+    final userService = context.read<UserService>();
 
-              // Teléfono de Emergencia
-              TextFormField(
-                controller: _emergencyPhoneController,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                    labelText: 'Teléfono de emergencia (opcional)',
-                    hintText: '+57 3009876543',
-                    prefixIcon: Icon(Icons.phone_in_talk)),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return null;
-                  String pattern = r'^\+[1-9]\d{0,2}\d{10}$';
-                  RegExp regExp = RegExp(pattern);
-                  return regExp.hasMatch(value)
-                      ? null
-                      : 'Debe ser un número de 10 dígitos con prefijo internacional';
-                },
-              ),
-              const SizedBox(height: 20),
+    final Map<String, dynamic> userData = {
+      'email': _emailController.text.trim(),
+      'password': _passwordController.text.trim(),
+      'name': _nameController.text.trim(),
+      'lastName': _lastNameController.text.trim(),
+      'phone': _phoneController.text.trim(),
+    };
 
-              // Contraseña
-              TextFormField(
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                controller: _passwordController,
-                textInputAction: TextInputAction.next,
-                obscureText: true,
-                decoration: const InputDecoration(
-                    labelText: 'Contraseña',
-                    hintText: '********',
-                    prefixIcon: Icon(Icons.lock_outline)),
-                validator: (value) {
-                  if (value == null || value.length < 8) {
-                    return 'Debe tener al menos 8 caracteres, una mayúscula y un número';
-                  }
-                  if (!value.contains(RegExp(r'[A-Z]'))) {
-                    return 'Debe tener al menos 8 caracteres, una mayúscula y un número';
-                  }
-                  if (!value.contains(RegExp(r'[0-9]'))) {
-                    return 'Debe tener al menos 8 caracteres, una mayúscula y un número';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
+    if (_emergencyPhoneController.text.trim().isNotEmpty) {
+      userData['emergencyPhone'] = _emergencyPhoneController.text.trim();
+    }
 
-              // Confirmar contraseña
-              TextFormField(
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                controller: _confirmPasswordController,
-                textInputAction: TextInputAction.done,
-                obscureText: true,
-                decoration: const InputDecoration(
-                    labelText: 'Confirmar Contraseña',
-                    hintText: '********',
-                    prefixIcon: Icon(Icons.lock_outline)),
-                validator: (value) => (value != _passwordController.text)
-                    ? 'Las contraseñas no coinciden'
-                    : null,
-              ),
-              const SizedBox(height: 30),
+    final String? errorMessage = await userService.createUser(userData);
 
-              // Botón de registro
-              MaterialButton(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                disabledColor: Colors.grey,
-                elevation: 0,
-                color: Colors.deepPurple,
-                onPressed: () async {
-                  FocusScope.of(context).unfocus();
-                  if (!_formKey.currentState!.validate()) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            'Por favor, complete todos los campos correctamente')));
-                    return;
-                  }
+    if (errorMessage == null) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('¡Registro exitoso! Por favor, inicia sesión.')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    }
+  }
+}
 
-                  // Obtener el servicio (usando Provider)
-                  final userService = context.read<UserService>();
+/// Header específico de la pantalla de registro.
+/// Reutiliza AppLogoHeader y añade el subtítulo "Crear cuenta".
+class _RegistrationHeader extends StatelessWidget {
+  const _RegistrationHeader();
 
-                  // Construir el mapa de datos según lo esperado por el backend
-                  final Map<String, dynamic> userData = {
-                    'email': _emailController.text.trim(),
-                    'password': _passwordController.text.trim(),
-                    'name': _nameController.text.trim(),
-                    'lastName': _lastNameController.text.trim(),
-                    'phone': _phoneController.text.trim(),
-                  };
-                  // Agregar teléfono de emergencia solo si no está vacío
-                  if (_emergencyPhoneController.text.trim().isNotEmpty) {
-                    userData['emergencyPhone'] = _emergencyPhoneController.text.trim();
-                  }
-
-                  // Llamar al método createUser con el mapa
-                  final String? errorMessage = await userService.createUser(userData);
-
-                  if (errorMessage == null) {
-                    // Registro exitoso, volver a login
-                    Navigator.of(context).pop(); // Cierra la pantalla de registro
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              '✅ ¡Registro exitoso! Por favor, inicia sesión.')),
-                    );
-                  } else {
-                    // Mostrar error
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(errorMessage)));
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 80, vertical: 15),
-                  child: const Text('Registrarse',
-                      style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const AppLogoHeader(avatarRadius: 70),
+        const SizedBox(height: 8),
+        const Text(
+          'Crear cuenta',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF5A7A96),
+            letterSpacing: 0.5,
           ),
         ),
-      ),
+      ],
     );
   }
 }
