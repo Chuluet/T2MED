@@ -80,7 +80,6 @@ class _PastilleroPageState extends State<PastilleroPage> {
     child: Column(
       children: [
 
-        // 🔽 DROPDOWN en vez de TextField
         DropdownButtonFormField<Map<String, dynamic>>(
           value: _medSeleccionado,
           decoration: const InputDecoration(
@@ -112,7 +111,10 @@ class _PastilleroPageState extends State<PastilleroPage> {
 
         ElevatedButton(
           onPressed: () => _agregarPastilla(service),
-          child: const Text("Agregar al pastillero"),
+          child: const Text(
+            "Agregar al pastillero",
+            style: TextStyle(color: Color(0xFF1E88E5), fontSize: 16),
+          ),
         ),
       ],
     ),

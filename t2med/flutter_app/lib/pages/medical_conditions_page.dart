@@ -133,7 +133,7 @@ class _MedicalConditionsPageState
         ),
         iconTheme:
             const IconThemeData(color: Colors.white),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: const Color(0xFF1E88E5),
         actions: [
           TextButton(
             onPressed:

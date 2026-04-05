@@ -22,73 +22,111 @@ class BuildConditionCard extends StatelessWidget {
         .where((e) => e.isNotEmpty)
         .toList();
 
-    return Card(
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF1E88E5), width: 1.5),
       ),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(18.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// 🔹 Título con ícono
-            Row(
-              children: [
-                Icon(icon, color: Colors.deepPurple),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFEAF4FF),
                 ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            /// 🔹 MODO EDICIÓN
-            if (isEditing)
-              TextFormField(
-                controller: controller,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: "Escribe los datos separados por comas",
-                  border: OutlineInputBorder(),
-                ),
-              )
-
-            /// 🔹 MODO VISUALIZACIÓN
-            else if (items.isEmpty)
-              const Text(
-                "No hay información registrada",
-                style: TextStyle(color: Colors.grey),
-              )
-            else
-              Column(
-                children: items
-                    .map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.circle,
-                              size: 8,
-                              color: Colors.deepPurple,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(item)),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
+                child: Icon(icon, color: const Color(0xFF1E88E5), size: 18),
               ),
-          ],
-        ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A2A3A),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          if (isEditing)
+            TextFormField(
+              controller: controller,
+              maxLines: 3,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF1A2A3A),
+              ),
+              decoration: InputDecoration(
+                hintText: 'Escribe los datos separados por comas',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF8A9BB0),
+                  fontSize: 13,
+                ),
+                filled: true,
+                fillColor: const Color(0xFFF5F8FC),
+                contentPadding: const EdgeInsets.all(12),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                      color: Color(0xFFDDE3EA), width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                      color: Color(0xFF1E88E5), width: 1.5),
+                ),
+              ),
+            )
+          else if (items.isEmpty)
+            const Text(
+              'No hay información registrada',
+              style: TextStyle(
+                color: Color(0xFF8A9BB0),
+                fontSize: 13,
+              ),
+            )
+          else
+            Column(
+              children: items
+                  .map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFF1E88E5),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF1A2A3A),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+        ],
       ),
     );
   }

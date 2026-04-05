@@ -3,6 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:t2med/services/user_service.dart';
 
+// widgets reutilizables
+import 'package:t2med/widgets/login/app_logo_header.dart';
+import 'package:t2med/widgets/login/rounded_input_field.dart';
+import 'package:t2med/widgets/login/auth_buttons.dart';
+import 'package:t2med/widgets/login/decorative_background.dart';
+
 class EditUserPage extends StatefulWidget {
   const EditUserPage({super.key});
 
@@ -32,7 +38,6 @@ class _EditUserPageState extends State<EditUserPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // Obtener el servicio desde Provider
     final userService = context.read<UserService>();
     final userData = await userService.getUserProfile(user.uid);
 
@@ -59,156 +64,187 @@ class _EditUserPageState extends State<EditUserPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editar perfil'),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    _buildField(
-                      controller: _nameController,
-                      label: 'Nombre',
-                      icon: Icons.person_outline,
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'El nombre es obligatorio' : null,
-                    ),
-                    const SizedBox(height: 20),
+      backgroundColor: const Color(0xFFEAEFF5),
+      body: Stack(
+        children: [
+          const DecorativeBackground(),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                children: [
+                  const SizedBox(height: 36),
 
-                    _buildField(
-                      controller: _lastNameController,
-                      label: 'Apellido',
-                      icon: Icons.person_outline,
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'El apellido es obligatorio' : null,
-                    ),
-                    const SizedBox(height: 20),
+                  const AppLogoHeader(avatarRadius: 70),
 
-                    _buildField(
-                      controller: _emailController,
-                      label: 'Correo electrónico',
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        final pattern =
-                            r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
-                        return RegExp(pattern).hasMatch(value ?? '')
-                            ? null
-                            : 'Correo inválido';
-                      },
-                    ),
-                    const SizedBox(height: 20),
+                  const SizedBox(height: 8),
 
-                    _buildField(
-                      controller: _phoneController,
-                      label: 'Teléfono de contacto',
-                      icon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        final pattern = r'^\+[1-9]\d{0,2}\d{10}$';
-                        return RegExp(pattern).hasMatch(value ?? '')
-                            ? null
-                            : 'Debe ser un número de 10 dígitos';
-                      },
+                  const Text(
+                    'Editar perfil',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF5A7A96),
+                      letterSpacing: 0.5,
                     ),
-                    const SizedBox(height: 20),
+                  ),
 
-                    _buildField(
-                      controller: _emergencyPhoneController,
-                      label: 'Teléfono de emergencia (opcional)',
-                      icon: Icons.phone_in_talk,
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return null;
-                        final pattern = r'^\+[1-9]\d{0,2}\d{10}$';
-                        return RegExp(pattern).hasMatch(value)
-                            ? null
-                            : 'Debe ser un número de 10 dígitos';
-                      },
-                    ),
-                    const SizedBox(height: 30),
+                  const SizedBox(height: 32),
 
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _saveChanges,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: _isSaving
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'Guardar cambios',
-                                style: TextStyle(color: Colors.white),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+
+                        /// Nombre y apellido
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RoundedInputField(
+                                controller: _nameController,
+                                hintText: 'Nombre',
+                                prefixIcon: Icons.person_outline,
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
+                                        ? 'Obligatorio'
+                                        : null,
                               ),
-                      ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: RoundedInputField(
+                                controller: _lastNameController,
+                                hintText: 'Apellido',
+                                prefixIcon: Icons.person_outline,
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
+                                        ? 'Obligatorio'
+                                        : null,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        RoundedInputField(
+                          controller: _emailController,
+                          hintText: 'Correo electrónico',
+                          prefixIcon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            const pattern =
+                                r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@'
+                                r'((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|'
+                                r'(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
+                            return RegExp(pattern).hasMatch(value ?? '')
+                                ? null
+                                : 'Correo inválido';
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        RoundedInputField(
+                          controller: _phoneController,
+                          hintText: 'Teléfono de contacto (+57...)',
+                          prefixIcon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            const pattern = r'^\+[1-9]\d{0,2}\d{10}$';
+                            return RegExp(pattern).hasMatch(value ?? '')
+                                ? null
+                                : 'Número con prefijo internacional';
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        RoundedInputField(
+                          controller: _emergencyPhoneController,
+                          hintText: 'Tel. emergencia (opcional)',
+                          prefixIcon: Icons.phone_in_talk_outlined,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return null;
+                            const pattern = r'^\+[1-9]\d{0,2}\d{10}$';
+                            return RegExp(pattern).hasMatch(value)
+                                ? null
+                                : 'Número con prefijo internacional';
+                          },
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        PrimaryButton(
+                          label: _isSaving
+                              ? 'GUARDANDO...'
+                              : 'GUARDAR CAMBIOS',
+                          onPressed: _isSaving ? null : _saveChanges,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        LinkTextButton(
+                          label: 'Cancelar',
+                          onPressed: () => Navigator.pop(context),
+                          textColor: const Color(0xFF1E88E5),
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-    );
-  }
-
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
+          ),
+        ],
       ),
-      validator: validator,
     );
   }
 
   Future<void> _saveChanges() async {
-  FocusScope.of(context).unfocus();
+    FocusScope.of(context).unfocus();
 
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  setState(() => _isSaving = true);
+    setState(() => _isSaving = true);
 
-  final userService = context.read<UserService>();
+    final userService = context.read<UserService>();
 
-  final Map<String, dynamic> profileData = {
-    'email': _emailController.text.trim(),
-    'name': _nameController.text.trim(),
-    'lastName': _lastNameController.text.trim(),
-    'phone': _phoneController.text.trim(),
-    'emergencyPhone': _emergencyPhoneController.text.trim().isEmpty
-        ? null
-        : _emergencyPhoneController.text.trim(),
-  };
+    final Map<String, dynamic> profileData = {
+      'email': _emailController.text.trim(),
+      'name': _nameController.text.trim(),
+      'lastName': _lastNameController.text.trim(),
+      'phone': _phoneController.text.trim(),
+      'emergencyPhone': _emergencyPhoneController.text.trim().isEmpty
+          ? null
+          : _emergencyPhoneController.text.trim(),
+    };
 
-  final error = await userService.updateUserProfile(profileData);
+    final error = await userService.updateUserProfile(profileData);
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() => _isSaving = false);
+    setState(() => _isSaving = false);
 
-  if (error != null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error)),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Perfil actualizado')),
-    );
-    Navigator.pop(context);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Perfil actualizado')),
+      );
+      Navigator.pop(context);
+    }
   }
-}
 }

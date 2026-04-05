@@ -139,7 +139,7 @@ class _HistoryPageState extends State<HistoryPage> {
           style: TextStyle(color: Colors.white),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Color(0xFF1E88E5),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -172,7 +172,7 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _isSending ? null : _showExportDialog,
-        backgroundColor: _isSending ? Colors.grey : Theme.of(context).primaryColor,
+        backgroundColor: _isSending ? Colors.grey : Color(0xFF1E88E5),
         child: const Icon(Icons.picture_as_pdf, color: Colors.white),
       ),
     );
@@ -279,7 +279,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+                  color:  Color(0xFF1E88E5),
                 ),
               ),
               const SizedBox(height: 12),
