@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:t2med/services/appointment_service.dart';
+import 'package:t2med/widgets/login/decorative_background.dart';
+import 'package:t2med/widgets/login/rounded_input_field.dart';
+import 'package:t2med/widgets/login/auth_buttons.dart';
 
 class AddAppointmentPage extends StatefulWidget {
   const AddAppointmentPage({super.key});
@@ -24,144 +27,158 @@ class _AddAppointmentPageState extends State<AddAppointmentPage> {
     'Pediatría',
     'Medicina General',
     'Neurología',
-    'Odontología'
+    'Odontología',
   ];
+
+  @override
+  void dispose() {
+    _lugarController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Registrar Cita Médica',
-          style: TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 22),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _label("Especialidad"),
-              _buildEspecialidadDropdown(),
-
-              _label("Lugar"),
-              _buildInputField(_lugarController, 'Ej: Hospital Central'),
-
-              _label("Fecha"),
-              GestureDetector(
-                onTap: _pickFecha,
-                child: _buildDateField(
-                  _fecha == null
-                      ? 'Seleccionar fecha'
-                      : DateFormat('dd/MM/yyyy').format(_fecha!),
-                  Icons.calendar_today,
-                ),
-              ),
-
-              _label("Hora"),
-              GestureDetector(
-                onTap: _pickHora,
-                child: _buildDateField(
-                  _hora == null ? 'Seleccionar hora' : _formatTimeOfDay(_hora!),
-                  Icons.access_time,
-                ),
-              ),
-
-              const SizedBox(height: 30),
-              _buildSaveButton(),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEspecialidadDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonFormField<String>(
-        value: _especialidad,
-        decoration: const InputDecoration(border: InputBorder.none),
-        hint: const Text('Selecciona especialidad'),
-        items: _especialidades.map((String esp) {
-          return DropdownMenuItem<String>(
-            value: esp,
-            child: Text(esp),
-          );
-        }).toList(),
-        onChanged: (value) => setState(() => _especialidad = value),
-      ),
-    );
-  }
-
-  Widget _buildInputField(TextEditingController controller, String hint) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateField(String text, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: const Color(0xFFEAEFF5),
+      body: Stack(
         children: [
-          Text(text, style: const TextStyle(fontSize: 16)),
-          Icon(icon, color: Colors.grey[600]),
+          const DecorativeBackground(),
+          SafeArea(
+            child: Column(
+              children: [
+                // ── AppBar ────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios,
+                            color: Color(0xFF2C3E50), size: 20),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Text(
+                        'Registrar Cita Médica',
+                        style: TextStyle(
+                          color: Color(0xFF2C3E50),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Formulario ────────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Detalles de la cita ─────────────────────
+                          const _SectionLabel(label: 'DETALLES DE LA CITA'),
+                          const SizedBox(height: 12),
+
+                          _DropdownField(
+                            icon: Icons.medical_services_outlined,
+                            hint: 'Especialidad médica',
+                            value: _especialidad,
+                            items: _especialidades,
+                            onChanged: (v) => setState(() => _especialidad = v),
+                          ),
+                          const SizedBox(height: 12),
+
+                          RoundedInputField(
+                            controller: _lugarController,
+                            hintText: 'Lugar (Ej: Hospital Central)',
+                            prefixIcon: Icons.location_on_outlined,
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'El lugar es obligatorio'
+                                : null,
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // ── Fecha y hora ────────────────────────────
+                          const _SectionLabel(label: 'FECHA Y HORA'),
+                          const SizedBox(height: 12),
+
+                          _DateTile(
+                            icon: Icons.calendar_today_outlined,
+                            label: 'Seleccionar fecha',
+                            value: _fecha == null
+                                ? null
+                                : DateFormat('dd/MM/yyyy').format(_fecha!),
+                            onTap: _pickFecha,
+                          ),
+                          const SizedBox(height: 10),
+
+                          _DateTile(
+                            icon: Icons.access_time_outlined,
+                            label: 'Seleccionar hora',
+                            value: _hora == null ? null : _formatTimeOfDay(_hora!),
+                            onTap: _pickHora,
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // ── Botón guardar ───────────────────────────
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E88E5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: _isSaving ? null : _guardarCita,
+                              child: _isSaving
+                                  ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                                  : const Text(
+                                'GUARDAR CITA',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          OutlinedActionButton(
+                            label: 'CANCELAR',
+                            onPressed: () => Navigator.pop(context),
+                          ),
+
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.indigo,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        onPressed: _isSaving ? null : _guardarCita,
-        child: _isSaving
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const Text(
-          "Guardar",
-          style: TextStyle(color: Colors.white, fontSize: 18),
-        ),
-      ),
-    );
-  }
+  // ── Pickers ───────────────────────────────────────────────────────────────
 
   Future<void> _pickFecha() async {
     final picked = await showDatePicker(
@@ -184,28 +201,28 @@ class _AddAppointmentPageState extends State<AddAppointmentPage> {
   String _formatTimeOfDay(TimeOfDay tod) =>
       '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
 
-  void _guardarCita() async {
+  // ── Guardar ───────────────────────────────────────────────────────────────
+
+  Future<void> _guardarCita() async {
     if (_isSaving) return;
 
     if (_especialidad == null ||
         _fecha == null ||
         _hora == null ||
         _lugarController.text.isEmpty) {
-      _showErrorSnackBar('Todos los campos son obligatorios');
+      _showSnackBar('⚠️ Todos los campos son obligatorios', Colors.red);
       return;
     }
 
     setState(() => _isSaving = true);
-
-    final hora24 = _formatTimeOfDay(_hora!);
 
     final appointmentService = context.read<AppointmentService>();
 
     final Map<String, dynamic> citaData = {
       'especialidad': _especialidad,
       'fecha': _fecha!.toIso8601String(),
-      'hora': hora24,
-      'lugar': _lugarController.text,
+      'hora': _formatTimeOfDay(_hora!),
+      'lugar': _lugarController.text.trim(),
     };
 
     final error = await appointmentService.addAppointment(citaData);
@@ -214,33 +231,174 @@ class _AddAppointmentPageState extends State<AddAppointmentPage> {
     setState(() => _isSaving = false);
 
     if (error != null) {
-      _showErrorSnackBar(error);
+      _showSnackBar(error, Colors.red);
     } else {
-      // Actualizar lista de próximas citas
       await appointmentService.getAppointments();
-
-      _showSuccessSnackBar('Cita médica registrada exitosamente');
-
-      // Regresar después de un pequeño delay para que se vea el SnackBar
+      _showSnackBar('✅ Cita médica registrada exitosamente', Colors.green);
       Future.delayed(const Duration(milliseconds: 500), () {
         Navigator.pop(context);
       });
     }
   }
 
-  void _showErrorSnackBar(String m) =>
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(m), backgroundColor: Colors.red));
+  void _showSnackBar(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: color),
+    );
+  }
+}
 
-  void _showSuccessSnackBar(String m) =>
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(m), backgroundColor: Colors.green));
+// ── Widgets internos ──────────────────────────────────────────────────────────
 
-  Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(top: 18, bottom: 8),
-    child: Text(
-      text,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    ),
-  );
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Colors.black,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+}
+
+class _DateTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final VoidCallback onTap;
+
+  const _DateTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasValue = value != null;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: hasValue ?  Colors.black : Colors.black87,
+              size: 20,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                hasValue ? value! : label,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: hasValue
+                      ? Colors.black
+                      : Colors.black,
+                  fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: Color(0xFF9DB2C4), size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownField extends StatelessWidget {
+  final IconData icon;
+  final String hint;
+  final String? value;
+  final List<String> items;
+  final void Function(String?) onChanged;
+
+  const _DropdownField({
+    required this.icon,
+    required this.hint,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          hint: Row(
+            children: [
+              Icon(icon, color: Colors.black, size: 20),
+              const SizedBox(width: 14),
+              Text(
+                hint,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          icon: const Icon(Icons.chevron_right_rounded,
+              color: Color(0xFF9DB2C4), size: 20),
+          style: const TextStyle(
+            fontSize: 15,
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+          items: items.map((String esp) {
+            return DropdownMenuItem<String>(
+              value: esp,
+              child: Row(
+                children: [
+                  Icon(icon, color: const Color(0xFF1E88E5), size: 18),
+                  const SizedBox(width: 12),
+                  Text(esp),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
 }
