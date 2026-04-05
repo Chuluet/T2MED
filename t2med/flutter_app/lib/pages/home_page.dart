@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:date_picker_timeline/date_picker_timeline.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
@@ -23,18 +22,18 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   DateTime _selectedDate = DateTime.now();
-  final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
 
   List<Map<String, dynamic>> _medicines = [];
   List<Map<String, dynamic>> _appointments = [];
   bool _isLoading = true;
+
+  static const Color _primaryBlue = Color(0xFF2196F3);
 
   @override
   void initState() {
     super.initState();
     _loadMedicines();
     _loadAppointments();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initNotifications();
     });
@@ -53,7 +52,6 @@ class _HomePageState extends State<HomePage> {
     setState(() => _isLoading = true);
     final medService = context.read<MedicationService>();
     final data = await medService.getMedicines();
-
     if (mounted) {
       setState(() {
         _medicines = data;
@@ -68,13 +66,11 @@ class _HomePageState extends State<HomePage> {
 
     final medService = context.read<MedicationService>();
     final estado = confirmacion ? 'Completada' : 'Omitida';
-    final horaProgramada = med['hora'];
-
     final error = await medService.registrarToma(
       med['id'],
       _selectedDate,
       estado,
-      horaProgramada,
+      med['hora'],
       med['nombre'],
     );
 
@@ -126,7 +122,6 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
-
     if (confirm != true) return;
 
     final service = context.read<MedicationService>();
@@ -134,13 +129,11 @@ class _HomePageState extends State<HomePage> {
 
     if (error == null) {
       _loadMedicines();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Medicamento eliminado")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Medicamento eliminado")));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
     }
   }
 
@@ -148,13 +141,11 @@ class _HomePageState extends State<HomePage> {
     return _medicines.where((med) {
       try {
         if (med['fechaInicio'] == null || med['fechaFin'] == null) return false;
-
         final inicio = DateTime.parse(med['fechaInicio']);
         final fin = DateTime.parse(med['fechaFin']);
-        final seleccion = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-
-        return !seleccion.isBefore(DateTime(inicio.year, inicio.month, inicio.day)) &&
-            !seleccion.isAfter(DateTime(fin.year, fin.month, fin.day));
+        final sel = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+        return !sel.isBefore(DateTime(inicio.year, inicio.month, inicio.day)) &&
+            !sel.isAfter(DateTime(fin.year, fin.month, fin.day));
       } catch (_) {
         return false;
       }
@@ -166,7 +157,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadAppointments() async {
     final service = context.read<AppointmentService>();
     final data = await service.getAppointments();
-
     if (mounted) setState(() => _appointments = data);
   }
 
@@ -174,8 +164,8 @@ class _HomePageState extends State<HomePage> {
     return _appointments.where((cita) {
       try {
         final fecha = DateTime.parse(cita['fecha']);
-        final d = DateTime(fecha.year, fecha.month, fecha.day);
-        return DateUtils.isSameDay(d, _selectedDate);
+        return DateUtils.isSameDay(
+            DateTime(fecha.year, fecha.month, fecha.day), _selectedDate);
       } catch (_) {
         return false;
       }
@@ -189,12 +179,15 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Confirmar eliminación'),
         content: const Text('¿Seguro que deseas eliminar la cita?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Eliminar", style: TextStyle(color: Colors.red))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancelar")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Eliminar", style: TextStyle(color: Colors.red))),
         ],
       ),
     );
-
     if (confirm != true) return;
 
     final service = context.read<AppointmentService>();
@@ -212,40 +205,129 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('T2MED', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white)),
-        backgroundColor: Colors.deepPurple,
+        title: const Text('Inicio'),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+        ),
+        backgroundColor: _primaryBlue,
+        elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: GestureDetector(
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ProfilePage())),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: const Icon(Icons.person_outline_rounded,
+                    color: _primaryBlue, size: 24),
+              ),
+            ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(80),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Bienvenido de vuelta',
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                _buildActionButtons(),
+              ],
+            ),
+          ),
+        ),
       ),
-      body: Column(
-        children: [
-          _headerSection(),
-          const SizedBox(height: 10),
-          _buildDatePicker(),
-          const SizedBox(height: 10),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildList(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: _primaryBlue))
+          : _buildScrollableContent(),
+    );
+  }
+
+  // ================= ACTION BUTTONS =================
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: _actionButton(
+            label: '+ Medicamento',
+            icon: Icons.medication_outlined,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddmedPage()),
+            ).then((_) => _loadMedicines()),
           ),
-        ],
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _actionButton(
+            label: '+ Cita Médica',
+            icon: Icons.calendar_month_outlined,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddAppointmentPage()),
+            ).then((_) => _loadAppointments()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _actionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: _primaryBlue, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _primaryBlue,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // ================= LISTA =================
+  // ================= SCROLLABLE CONTENT =================
 
-  Widget _buildList() {
+  Widget _buildScrollableContent() {
     final meds = _getMedicinesForSelectedDate();
     final citas = _getAppointmentsForSelectedDate();
-
-    if (meds.isEmpty && citas.isEmpty) return _empty("No tienes registros para este día.");
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -253,14 +335,90 @@ class _HomePageState extends State<HomePage> {
         await _loadAppointments();
       },
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         children: [
-          ...meds.map(_buildMedCardWrapper),
-          ...citas.map(_buildAppointmentCard),
+          _buildSectionBubble(
+            title: 'Medicamentos',
+            icon: Icons.medication_outlined,
+            emptyMessage: 'Sin medicamentos para este día',
+            isEmpty: meds.isEmpty,
+            children: meds.map(_buildMedCardWrapper).toList(),
+          ),
+          const SizedBox(height: 20),
+          _buildSectionBubble(
+            title: 'Citas Médicas',
+            icon: Icons.calendar_month_outlined,
+            emptyMessage: 'Sin citas para este día',
+            isEmpty: citas.isEmpty,
+            children: citas.map(_buildAppointmentCard).toList(),
+          ),
         ],
       ),
     );
   }
+
+  // ================= SECTION BUBBLE =================
+
+  Widget _buildSectionBubble({
+    required String title,
+    required IconData icon,
+    required String emptyMessage,
+    required bool isEmpty,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _primaryBlue, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryBlue,
+                  ),
+                ),
+                Icon(icon, color: _primaryBlue, size: 24),
+              ],
+            ),
+          ),
+          if (isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Text(emptyMessage,
+                  style: const TextStyle(
+                      color: Color(0xFF8A9BB0), fontSize: 16)),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(children: children),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ================= MED CARD =================
 
   Widget _buildMedCardWrapper(Map<String, dynamic> med) {
     return FutureBuilder<Map<String, dynamic>?>(
@@ -268,27 +426,28 @@ class _HomePageState extends State<HomePage> {
           .read<MedicationService>()
           .getTomaDelDia(med['id'], _selectedDate),
       builder: (context, snapshot) {
-        String estado = "Pendiente";
-        Color estadoColor = Colors.orange;
+        String estado = "Marcar";
+        Color estadoBg = _primaryBlue;
         bool puedeCambiar = true;
+        bool completada = false;
 
         if (snapshot.connectionState == ConnectionState.done &&
             snapshot.hasData &&
             snapshot.data != null) {
           final toma = snapshot.data!;
           if (toma['estado'] == 'Completada') {
-            estado = "Completado";
-            estadoColor = Colors.green;
+            estado = "Completada";
+            estadoBg = Colors.green;
             puedeCambiar = false;
+            completada = true;
           } else if (toma['estado'] == 'Omitida') {
-            estado = "Omitido";
-            estadoColor = Colors.red;
+            estado = "Omitida";
+            estadoBg = Colors.red;
             puedeCambiar = false;
           }
         }
 
-        int colorIndex = med['colorIndex'] as int? ?? 0;
-        final color = _colors[colorIndex % _colors.length];
+        final formattedDate = DateFormat('dd/MM/yyyy').format(_selectedDate);
 
         return Dismissible(
           key: Key(med['id']),
@@ -296,10 +455,8 @@ class _HomePageState extends State<HomePage> {
           secondaryBackground: _deleteBg(),
           confirmDismiss: (direction) async {
             if (direction == DismissDirection.startToEnd) {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => EditMedPage(med: med)),
-              );
+              final result = await Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => EditMedPage(med: med)));
               if (result == true) _loadMedicines();
               return false;
             } else {
@@ -308,77 +465,97 @@ class _HomePageState extends State<HomePage> {
             }
           },
           child: Container(
-            margin: const EdgeInsets.only(bottom: 15),
-            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: color,
+              color: const Color(0xFFF5F9FF),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFDDE8F5), width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    Container(
+                      width: 45,
+                      height: 45,
+                      decoration: BoxDecoration(
+                        color: completada
+                            ? Colors.green.shade100
+                            : const Color(0xFFD6E8FB),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        completada
+                            ? Icons.check_circle_outline
+                            : Icons.medication_outlined,
+                        color: completada ? Colors.green : _primaryBlue,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: Text(
-                        med['nombre'] ?? 'Sin nombre',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            med['nombre'] ?? 'Sin nombre',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                              color: Color(0xFF1A2A3A),
+                            ),
+                          ),
+                          if (med['dosis'] != null &&
+                              med['dosis'].toString().isNotEmpty)
+                            Text(med['dosis'],
+                                style: const TextStyle(
+                                    fontSize: 14, color: Color(0xFF8A9BB0))),
+                        ],
                       ),
                     ),
                     GestureDetector(
                       onTap: puedeCambiar ? () => _handleToma(med) : null,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
+                            horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: estadoColor,
-                          borderRadius: BorderRadius.circular(8),
+                          color: puedeCambiar
+                              ? estadoBg
+                              : estadoBg.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(24),
                         ),
                         child: Text(
                           estado,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
+                          style: TextStyle(
+                            color: puedeCambiar ? Colors.white : estadoBg,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Icon(Icons.access_time,
-                        color: Colors.white70, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      med['hora'] ?? '--:--',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                      ),
-                    ),
+                    const Icon(Icons.access_time_outlined,
+                        size: 16, color: Color(0xFF8A9BB0)),
+                    const SizedBox(width: 5),
+                    Text(med['hora'] ?? '--:--',
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF8A9BB0))),
+                    const SizedBox(width: 20),
+                    const Icon(Icons.calendar_today_outlined,
+                        size: 16, color: Color(0xFF8A9BB0)),
+                    const SizedBox(width: 5),
+                    Text(formattedDate,
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF8A9BB0))),
                   ],
                 ),
-                if (med['nota'] != null &&
-                    med['nota'].toString().isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      med['nota'],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -387,8 +564,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ================= APPOINTMENT CARD =================
+
   Widget _buildAppointmentCard(Map<String, dynamic> cita) {
-    final color = Color(int.tryParse(cita['color']?.toString() ?? '') ?? Colors.indigo.value);
+    final formattedDate = DateFormat('dd/MM/yyyy').format(_selectedDate);
 
     return Dismissible(
       key: Key(cita['id']),
@@ -396,7 +575,11 @@ class _HomePageState extends State<HomePage> {
       secondaryBackground: _deleteBg(),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
-          final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => EditAppointmentPage(appointment: cita)));
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => EditAppointmentPage(appointment: cita)),
+          );
           if (result == true) _loadAppointments();
           return false;
         } else {
@@ -404,125 +587,93 @@ class _HomePageState extends State<HomePage> {
           return false;
         }
       },
-      child: _card(color, Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(cita['especialidad'], style: _titleStyle),
-          const SizedBox(height: 8),
-          _rowIcon(Icons.access_time, cita['hora'] ?? "--:--"),
-          const SizedBox(height: 6),
-          Text(cita['lugar'], style: _textStyle),
-        ],
-      )),
-    );
-  }
-
-  // ================= HEADER =================
-
-  Widget _headerSection() {
-    return SizedBox(
-      height: 100,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(DateFormat.yMMMMd().format(DateTime.now()), style: const TextStyle(fontSize: 18, color: Colors.black54)),
-                  const Text('Hoy', style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: 30,
-            right: 20,
-            child: Row(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F9FF),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFDDE8F5), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AddAppointmentPage())).then((_) => _loadAppointments());
-                  },
-                  style: _buttonStyle(),
-                  child: const Text('+ CITAS', style: _buttonText),
+                Container(
+                  width: 45,
+                  height: 45,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFD6E8FB),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.local_hospital_outlined,
+                      color: _primaryBlue, size: 22),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AddmedPage())).then((_) => _loadMedicines());
-                  },
-                  style: _buttonStyle(),
-                  child: const Text('+ MED', style: _buttonText),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    cita['especialidad'] ?? 'Cita médica',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                      color: Color(0xFF1A2A3A),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.access_time_outlined,
+                    size: 16, color: Color(0xFF8A9BB0)),
+                const SizedBox(width: 5),
+                Text(cita['hora'] ?? '--:--',
+                    style: const TextStyle(
+                        fontSize: 14, color: Color(0xFF8A9BB0))),
+                const SizedBox(width: 20),
+                const Icon(Icons.calendar_today_outlined,
+                    size: 16, color: Color(0xFF8A9BB0)),
+                const SizedBox(width: 5),
+                Text(formattedDate,
+                    style: const TextStyle(
+                        fontSize: 14, color: Color(0xFF8A9BB0))),
+              ],
+            ),
+            if (cita['lugar'] != null && cita['lugar'].toString().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 16, color: Color(0xFF8A9BB0)),
+                    const SizedBox(width: 5),
+                    Text(cita['lugar'],
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF8A9BB0))),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   // ================= UI HELPERS =================
 
-  Widget _buildDatePicker() {
-    return Container(
-      margin: const EdgeInsets.only(left: 20),
-      child: DatePicker(
-        DateTime.now(),
-        height: 100,
-        width: 80,
-        initialSelectedDate: _selectedDate,
-        selectionColor: Colors.deepPurple,
-        selectedTextColor: Colors.white,
-        onDateChange: (date) => setState(() => _selectedDate = date),
-      ),
-    );
-  }
-
-  Widget _card(Color color, Widget child) => Container(
-    margin: const EdgeInsets.only(bottom: 15),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: child,
-  );
-
-  Widget _rowIcon(IconData icon, String text) => Row(
-    children: [
-      Icon(icon, color: Colors.white70, size: 18),
-      const SizedBox(width: 6),
-      Text(text, style: _textStyle),
-    ],
-  );
-
   Widget _editBg() => Container(
-    color: Colors.blue,
-    alignment: Alignment.centerLeft,
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: const Icon(Icons.edit, color: Colors.white),
-  );
+        color: Colors.blue,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.edit, color: Colors.white, size: 28),
+      );
 
   Widget _deleteBg() => Container(
-    color: Colors.red,
-    alignment: Alignment.centerRight,
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: const Icon(Icons.delete, color: Colors.white),
-  );
-
-  Widget _empty(String m) => Center(child: Text(m, style: const TextStyle(color: Colors.black54)));
-
-  ButtonStyle _buttonStyle() => ElevatedButton.styleFrom(
-    backgroundColor: Colors.deepPurple,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-    elevation: 6,
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-  );
-
-  static const _buttonText = TextStyle(fontSize: 20, color: Colors.white);
-  static const _titleStyle = TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18);
-  static const _textStyle = TextStyle(color: Colors.white70, fontSize: 15);
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete, color: Colors.white, size: 28),
+      );
 }
