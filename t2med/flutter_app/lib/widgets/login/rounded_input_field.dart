@@ -32,8 +32,8 @@ class RoundedInputField extends StatelessWidget {
       style: const TextStyle(fontSize: 15, color: Color.fromARGB(255, 0, 0, 0)),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(color: Color(0xFF8A9BB0), fontSize: 14),
-        prefixIcon: Icon(prefixIcon, color: const Color(0xFF8A9BB0), size: 20),
+        hintStyle: const TextStyle(color: Colors.black, fontSize: 14),
+        prefixIcon: Icon(prefixIcon, color:  Colors.black, size: 20),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
