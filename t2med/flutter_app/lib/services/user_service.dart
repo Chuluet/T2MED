@@ -5,35 +5,47 @@ import 'package:http/http.dart' as http;
 
 class UserService extends ChangeNotifier {
   static const String baseUrl = 'http://10.0.2.2:3000';
-  
-  // Estado interno
+
   Map<String, dynamic>? _currentUserProfile;
   Map<String, dynamic>? get currentUserProfile => _currentUserProfile;
 
-  // Helper para peticiones autenticadas
-  Future<http.Response> _authenticatedRequest(
-    String method,
-    String path, {
-    Map<String, String>? headers,
-    Object? body,
-  }) async {
-    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-    final uri = Uri.parse('$baseUrl$path');
-    final requestHeaders = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-      ...?headers,
-    };
+  Future<String?> login(String email, String password) async {
+  try {
+    final credential = await FirebaseAuth.instance
+        .signInWithEmailAndPassword(email: email, password: password);
 
-    switch (method.toUpperCase()) {
-      case 'GET':
-        return http.get(uri, headers: requestHeaders);
-      case 'POST':
-        return http.post(uri, headers: requestHeaders, body: body);
-      case 'PATCH':
-        return http.patch(uri, headers: requestHeaders, body: body);
-      default:
-        throw UnsupportedError('Método HTTP no soportado');
+    // Una vez autenticado, cargamos el perfil desde NestJS
+    final uid = credential.user!.uid;
+    await getUserProfile(uid);
+
+    return null; // null = éxito
+  } on FirebaseAuthException catch (e) {
+    return switch (e.code) {
+      'user-not-found'  => 'No existe una cuenta con este correo',
+      'wrong-password'  => 'Contraseña incorrecta',
+      'invalid-email'   => 'Correo inválido',
+      'user-disabled'   => 'Esta cuenta ha sido deshabilitada',
+      'invalid-credential' => 'Correo o contraseña incorrectos',
+      _ => 'Error al iniciar sesión',
+    };
+  } catch (e) {
+    return 'Error de red: $e';
+  }
+}
+
+  // ==================== Registro ====================
+  Future<String?> createUser(Map<String, dynamic> body) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/create'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) return null;
+      final resBody = jsonDecode(response.body);
+      return resBody['message'] ?? 'Error creando usuario';
+    } catch (e) {
+      return 'Error de red: $e';
     }
   }
 
@@ -54,48 +66,21 @@ class UserService extends ChangeNotifier {
   }
 
   Future<String?> updateUserProfile(Map<String, dynamic> body) async {
-  try {
-    final response = await _authenticatedRequest(
-      'PATCH',
-      '/users/profile',
-      body: jsonEncode(body),
-    );
-    debugPrint('📡 updateUserProfile status: ${response.statusCode}');
-    debugPrint('📡 updateUserProfile body: ${response.body}');
-
-    if (response.statusCode == 200) {
-      // 🔥 Actualizar el estado local con los nuevos datos
-      _currentUserProfile = {...?_currentUserProfile, ...body};
-      notifyListeners(); // 🔥 Notificar a los widgets
-      return null; // éxito
-    }
-
-    // Intentar obtener mensaje de error del backend
     try {
-      final resBody = jsonDecode(response.body);
-      return resBody['message'] ?? 'Error ${response.statusCode}';
-    } catch (_) {
-      return 'Error del servidor (${response.statusCode})';
-    }
-  } catch (e) {
-    debugPrint('❌ Exception en updateUserProfile: $e');
-    return 'Error de conexión: $e';
-  }
-}
-
-  // ==================== Registro ====================
-  Future<String?> createUser(Map<String, dynamic> body) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/users/create'),
-        headers: {'Content-Type': 'application/json'},
+      final response = await _authenticatedRequest(
+        'PATCH',
+        '/users/profile',
         body: jsonEncode(body),
       );
-      if (response.statusCode == 200 || response.statusCode == 201) return null;
+      if (response.statusCode == 200) {
+        _currentUserProfile = {...?_currentUserProfile, ...body};
+        notifyListeners();
+        return null;
+      }
       final resBody = jsonDecode(response.body);
-      return resBody['message'] ?? 'Error creando usuario';
+      return resBody['message'] ?? 'Error ${response.statusCode}';
     } catch (e) {
-      return 'Error de red: $e';
+      return 'Error de conexión: $e';
     }
   }
 
@@ -144,6 +129,32 @@ class UserService extends ChangeNotifier {
       return resBody['message'] ?? 'Error registrando token';
     } catch (e) {
       return 'Error de red: $e';
+    }
+  }
+
+  // ==================== Helper autenticado ====================
+  Future<http.Response> _authenticatedRequest(
+    String method,
+    String path, {
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    final uri = Uri.parse('$baseUrl$path');
+    final requestHeaders = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+      ...?headers,
+    };
+    switch (method.toUpperCase()) {
+      case 'GET':
+        return http.get(uri, headers: requestHeaders);
+      case 'POST':
+        return http.post(uri, headers: requestHeaders, body: body);
+      case 'PATCH':
+        return http.patch(uri, headers: requestHeaders, body: body);
+      default:
+        throw UnsupportedError('Método HTTP no soportado');
     }
   }
 }
