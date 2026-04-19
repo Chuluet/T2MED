@@ -16,30 +16,20 @@ import 'package:t2med/services/appointment_service.dart';
 ///  *********************************************
 ///     NOTIFICATION CONTROLLER
 ///  *********************************************
-///
+
 class NotificationController {
-  /// Use this method to detect when a new notification or a schedule is created
   @pragma("vm:entry-point")
   static Future<void> onNotificationCreatedMethod(
-      ReceivedNotification receivedNotification) async {
-    // Your code goes here
-  }
+      ReceivedNotification receivedNotification) async {}
 
-  /// Use this method to detect every time that a new notification is displayed
   @pragma("vm:entry-point")
   static Future<void> onNotificationDisplayedMethod(
-      ReceivedNotification receivedNotification) async {
-    // Your code goes here
-  }
+      ReceivedNotification receivedNotification) async {}
 
-  /// Use this method to detect if the user dismissed a notification
   @pragma("vm:entry-point")
   static Future<void> onDismissActionReceivedMethod(
-      ReceivedAction receivedAction) async {
-    // Your code goes here
-  }
+      ReceivedAction receivedAction) async {}
 
-  /// Use this method to detect when the user taps on a notification or action button
   @pragma("vm:entry-point")
   static Future<void> onActionReceivedMethod(
       ReceivedAction receivedAction) async {
@@ -61,7 +51,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Inicializar Awesome Notifications (opcional, para mostrar notificaciones en primer plano)
+  // Inicializar Awesome Notifications
   await AwesomeNotifications().initialize(
     null,
     [
@@ -69,7 +59,7 @@ void main() async {
         channelKey: 'medication_channel',
         channelName: 'Recordatorios de Medicamentos',
         channelDescription: 'Recordatorios para tomar medicamentos',
-        defaultColor: Colors.indigo,
+        defaultColor: const Color(0xFF2196F3),
         ledColor: Colors.white,
         importance: NotificationImportance.High,
         channelShowBadge: true,
@@ -80,21 +70,21 @@ void main() async {
     debug: true,
   );
 
-  // Set the listener to handle notification actions
+  // Listeners de notificaciones
   AwesomeNotifications().setListeners(
     onActionReceivedMethod: NotificationController.onActionReceivedMethod,
     onNotificationCreatedMethod:
-    NotificationController.onNotificationCreatedMethod,
+        NotificationController.onNotificationCreatedMethod,
     onNotificationDisplayedMethod:
-    NotificationController.onNotificationDisplayedMethod,
+        NotificationController.onNotificationDisplayedMethod,
     onDismissActionReceivedMethod:
-    NotificationController.onDismissActionReceivedMethod,
+        NotificationController.onDismissActionReceivedMethod,
   );
 
-  // Solicitar permisos para notificaciones
+  // Permisos de notificaciones
   await AwesomeNotifications().requestPermissionToSendNotifications();
 
-  // Inicializar formato de fechas en español
+  // Formato de fechas en español
   await initializeDateFormatting('es_ES', null);
 
   runApp(const AppState());
@@ -107,7 +97,6 @@ class AppState extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Servicios (orden alfabético)
         ChangeNotifierProvider(create: (_) => MedicationService()),
         ChangeNotifierProvider(create: (_) => AppointmentService()),
         Provider(create: (_) => NotificationService()),
@@ -128,8 +117,29 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'T2Med App',
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: Colors.grey[200],
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF2196F3),
+          primary: const Color(0xFF2196F3),
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF2F5F8),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF2196F3),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2196F3),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF2196F3),
+          foregroundColor: Colors.white,
+        ),
       ),
       initialRoute: 'login',
       routes: {
