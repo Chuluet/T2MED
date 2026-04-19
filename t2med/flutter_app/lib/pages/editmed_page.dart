@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:t2med/services/med_service.dart'; // Servicio unificado
+import 'package:t2med/services/med_service.dart';
+import 'package:t2med/widgets/login/decorative_background.dart';
+import 'package:t2med/widgets/login/rounded_input_field.dart';
+import 'package:t2med/widgets/login/auth_buttons.dart';
 
 class EditMedPage extends StatefulWidget {
   final Map<String, dynamic> med;
@@ -18,13 +21,11 @@ class _EditMedPageState extends State<EditMedPage> {
   late TextEditingController _medicamentoController;
   late TextEditingController _dosisController;
   late TextEditingController _notaController;
+
   DateTime? _fechaInicio;
   DateTime? _fechaFin;
   TimeOfDay? _hora;
-  int _selectedColor = 0;
   bool _loading = false;
-
-  final List<Color> _colors = [Colors.orange, Colors.indigo, Colors.pink];
 
   @override
   void initState() {
@@ -35,10 +36,8 @@ class _EditMedPageState extends State<EditMedPage> {
     _fechaInicio = _parseDate(widget.med['fechaInicio']);
     _fechaFin = _parseDate(widget.med['fechaFin']);
     _hora = _parseHora(widget.med['hora']);
-    _selectedColor = widget.med['colorIndex'] ?? 0;
   }
 
-  // Parsea fechas en formato ISO (enviadas por el backend)
   DateTime? _parseDate(dynamic date) {
     if (date == null) return null;
     if (date is String) {
@@ -57,19 +56,19 @@ class _EditMedPageState extends State<EditMedPage> {
     try {
       final parts = hora.split(':');
       if (parts.length == 2) {
-        final hour = int.parse(parts[0]);
-        final minute = int.parse(parts[1]);
-        return TimeOfDay(hour: hour, minute: minute);
+        return TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
       }
       return TimeOfDay.now();
-    } catch (e) {
+    } catch (_) {
       return TimeOfDay.now();
     }
   }
 
-  String _formatTimeOfDay(TimeOfDay tod) {
-    return '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatTimeOfDay(TimeOfDay tod) =>
+      '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
 
   @override
   void dispose() {
@@ -82,206 +81,225 @@ class _EditMedPageState extends State<EditMedPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Editar Medicamento',
-          style: TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 22),
-        ),
-        centerTitle: false,
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label("Medicamento"),
-                    _buildInputField(
-                      _medicamentoController,
-                      'Nombre del medicamento',
-                    ),
-                    _label("Dosis"),
-                    _buildInputField(
-                      _dosisController,
-                      'Ej: 500',
-                      isNumeric: true,
-                    ),
-                    _label("Notas (opcional)"),
-                    _buildInputField(
-                      _notaController,
-                      'Agrega una nota...',
-                    ),
-                    _label("Fecha de inicio"),
-                    GestureDetector(
-                      onTap: _pickFechaInicio,
-                      child: _buildDateField(
-                        _fechaInicio == null
-                            ? 'Seleccionar fecha'
-                            : DateFormat('dd/MM/yyyy').format(_fechaInicio!),
-                        Icons.calendar_today,
+      backgroundColor: const Color(0xFFEAEFF5),
+      body: Stack(
+        children: [
+          const DecorativeBackground(),
+          SafeArea(
+            child: Column(
+              children: [
+                // ── AppBar ────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios,
+                            color: Color(0xFF2C3E50), size: 20),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                    ),
-                    _label("Fecha de fin"),
-                    GestureDetector(
-                      onTap: _pickFechaFin,
-                      child: _buildDateField(
-                        _fechaFin == null
-                            ? 'Seleccionar fecha'
-                            : DateFormat('dd/MM/yyyy').format(_fechaFin!),
-                        Icons.event,
-                      ),
-                    ),
-                    _label("Hora"),
-                    GestureDetector(
-                      onTap: _pickHora,
-                      child: _buildDateField(
-                        _hora == null
-                            ? 'Seleccionar hora'
-                            : _formatTimeOfDay(_hora!),
-                        Icons.access_time,
-                      ),
-                    ),
-                    _label("Color"),
-                    Row(
-                      children: List.generate(_colors.length, (index) {
-                        final color = _colors[index];
-                        final isSelected = _selectedColor == index;
-                        return GestureDetector(
-                          onTap: () {
-                            if (mounted) {
-                              setState(() => _selectedColor = index);
-                            }
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 12, top: 12),
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.black
-                                    : Colors.transparent,
-                                width: 3,
-                              ),
-                              boxShadow: [
-                                if (isSelected)
-                                  BoxShadow(
-                                    color: color.withOpacity(0.4),
-                                    blurRadius: 8,
-                                    spreadRadius: 2,
-                                  )
-                              ],
-                            ),
-                            child: isSelected
-                                ? const Icon(Icons.check,
-                                    color: Colors.white, size: 20)
-                                : null,
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 30),
-                    Center(
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.indigo,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          onPressed: _loading ? null : _guardarCambios,
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Text(
-                                  "Guardar Cambios",
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                ),
+                      const Text(
+                        'Editar Medicamento',
+                        style: TextStyle(
+                          color: Color(0xFF2C3E50),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+
+                // ── Formulario ────────────────────────────────────────
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 8),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Información básica ──────────────────
+                          const _SectionLabel(label: 'INFORMACIÓN BÁSICA'),
+                          const SizedBox(height: 12),
+
+                          RoundedInputField(
+                            controller: _medicamentoController,
+                            hintText: 'Nombre del medicamento',
+                            prefixIcon: Icons.medication_outlined,
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'El nombre es obligatorio'
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Dosis con TextFormField nativo para inputFormatters
+                          TextFormField(
+                            controller: _dosisController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'La dosis es obligatoria'
+                                : null,
+                            decoration: InputDecoration(
+                              hintText: 'Dosis (Ej: 500mg)',
+                              hintStyle: const TextStyle(
+                                  color: Colors.black54, fontSize: 15),
+                              filled: true,
+                              fillColor: Colors.white,
+                              prefixIcon: const Icon(Icons.scale_outlined,
+                                  color: Colors.black54, size: 20),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 16),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Notas con layout externo para centrar ícono
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              crossAxisAlignment:
+                              CrossAxisAlignment.center,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 16),
+                                  child: Icon(Icons.notes_rounded,
+                                      color: Colors.black54, size: 20),
+                                ),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _notaController,
+                                    maxLines: 2,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Notas (opcional)',
+                                      hintStyle: TextStyle(
+                                          color: Colors.black54,
+                                          fontSize: 15),
+                                      filled: false,
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 14),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // ── Fechas y hora ───────────────────────
+                          const _SectionLabel(label: 'FECHAS Y HORA'),
+                          const SizedBox(height: 12),
+
+                          _DateTile(
+                            icon: Icons.calendar_today_outlined,
+                            label: 'Fecha de inicio',
+                            value: _fechaInicio == null
+                                ? null
+                                : DateFormat('dd/MM/yyyy')
+                                .format(_fechaInicio!),
+                            onTap: _pickFechaInicio,
+                          ),
+                          const SizedBox(height: 10),
+
+                          _DateTile(
+                            icon: Icons.event_outlined,
+                            label: 'Fecha de fin',
+                            value: _fechaFin == null
+                                ? null
+                                : DateFormat('dd/MM/yyyy')
+                                .format(_fechaFin!),
+                            onTap: _pickFechaFin,
+                          ),
+                          const SizedBox(height: 10),
+
+                          _DateTile(
+                            icon: Icons.access_time_outlined,
+                            label: 'Hora de toma',
+                            value: _hora == null
+                                ? null
+                                : _formatTimeOfDay(_hora!),
+                            onTap: _pickHora,
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // ── Botón guardar ───────────────────────
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E88E5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: _loading ? null : _guardarCambios,
+                              child: _loading
+                                  ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                                  : const Text(
+                                'GUARDAR CAMBIOS',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          OutlinedActionButton(
+                            label: 'CANCELAR',
+                            onPressed: () => Navigator.pop(context),
+                          ),
+
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-    );
-  }
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-      );
-
-  Widget _buildInputField(
-    TextEditingController controller,
-    String hint, {
-    bool isNumeric = false,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-      keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-      inputFormatters: isNumeric
-          ? <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly]
-          : [],
-    );
-  }
-
-  Widget _buildDateField(String text, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(text, style: const TextStyle(fontSize: 16)),
-          Icon(icon, color: Colors.grey[600]),
+          ),
         ],
       ),
     );
   }
+
+  // ── Pickers ───────────────────────────────────────────────────────────────
 
   Future<void> _pickFechaInicio() async {
     final picked = await showDatePicker(
@@ -290,9 +308,7 @@ class _EditMedPageState extends State<EditMedPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null && mounted) {
-      setState(() => _fechaInicio = picked);
-    }
+    if (picked != null && mounted) setState(() => _fechaInicio = picked);
   }
 
   Future<void> _pickFechaFin() async {
@@ -302,75 +318,145 @@ class _EditMedPageState extends State<EditMedPage> {
       firstDate: _fechaInicio ?? DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null && mounted) {
-      setState(() => _fechaFin = picked);
-    }
+    if (picked != null && mounted) setState(() => _fechaFin = picked);
   }
 
   Future<void> _pickHora() async {
-    final picked =
-        await showTimePicker(context: context, initialTime: _hora ?? TimeOfDay.now());
-    if (picked != null && mounted) {
-      setState(() => _hora = picked);
-    }
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _hora ?? TimeOfDay.now(),
+    );
+    if (picked != null && mounted) setState(() => _hora = picked);
   }
 
-  void _showSnack(String message, {Color color = Colors.redAccent}) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: color),
-      );
-    }
-  }
+  // ── Guardar ───────────────────────────────────────────────────────────────
 
   Future<void> _guardarCambios() async {
     if (_loading) return;
-    
+
     if (_medicamentoController.text.isEmpty ||
         _dosisController.text.isEmpty ||
         _hora == null ||
         _fechaInicio == null ||
         _fechaFin == null) {
-      _showSnack('⚠️ Por favor completa todos los campos requeridos');
+      _showSnackBar(
+          '⚠️ Por favor completa todos los campos requeridos', Colors.red);
       return;
     }
 
-    if (mounted) {
-      setState(() => _loading = true);
-    }
+    if (mounted) setState(() => _loading = true);
 
-    final hora24 = _formatTimeOfDay(_hora!);
-
-    // Obtener el servicio desde Provider
     final medService = context.read<MedicationService>();
 
-    // Construir el mapa de datos a actualizar
     final Map<String, dynamic> medicineData = {
-      'nombre': _medicamentoController.text,
-      'dosis': _dosisController.text,
+      'nombre': _medicamentoController.text.trim(),
+      'dosis': _dosisController.text.trim(),
       'nota': _notaController.text.isNotEmpty ? _notaController.text : null,
       'fechaInicio': _fechaInicio!.toIso8601String(),
       'fechaFin': _fechaFin!.toIso8601String(),
-      'hora': hora24,
-      'colorIndex': _selectedColor,
+      'hora': _formatTimeOfDay(_hora!),
     };
 
-    // Llamar al método de actualización con el id y los datos
     final error = await medService.updateMedicine(
       widget.med['id'],
       medicineData,
     );
 
     if (!mounted) return;
-
     setState(() => _loading = false);
 
     if (error == null) {
-      _showSnack('✅ Medicamento actualizado exitosamente',
-          color: Colors.greenAccent);
+      _showSnackBar('✅ Medicamento actualizado exitosamente', Colors.green);
       Navigator.pop(context, true);
     } else {
-      _showSnack(error);
+      _showSnackBar(error, Colors.red);
     }
+  }
+
+  void _showSnackBar(String msg, Color color) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: color),
+      );
+    }
+  }
+}
+
+// ── Widgets internos ──────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Colors.black54,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+}
+
+class _DateTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final VoidCallback onTap;
+
+  const _DateTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasValue = value != null;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: hasValue ? Colors.black87 : Colors.black54,
+              size: 20,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                hasValue ? value! : label,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: hasValue ? Colors.black87 : Colors.black54,
+                  fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: Color(0xFF9DB2C4), size: 20),
+          ],
+        ),
+      ),
+    );
   }
 }
