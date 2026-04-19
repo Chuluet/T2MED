@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:t2med/services/user_service.dart';
-
-// Widgets reutilizables
 import 'package:t2med/widgets/login/app_logo_header.dart';
 import 'package:t2med/widgets/login/rounded_input_field.dart';
 import 'package:t2med/widgets/login/auth_buttons.dart';
@@ -17,14 +15,15 @@ class RegistrationPage extends StatefulWidget {
 
 class _RegistrationPageState extends State<RegistrationPage> {
   final _formKey = GlobalKey<FormState>();
-
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _emergencyPhoneController = TextEditingController();
+  final TextEditingController _emergencyPhoneController =
+      TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   @override
   void dispose() {
@@ -51,17 +50,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
               child: Column(
                 children: [
                   const SizedBox(height: 36),
-
-                  // Header reutilizable con subtítulo "Crear cuenta"
                   const _RegistrationHeader(),
-
                   const SizedBox(height: 32),
-
                   Form(
                     key: _formKey,
                     child: Column(
                       children: [
-                        // Nombre y Apellido en fila
                         Row(
                           children: [
                             Expanded(
@@ -69,7 +63,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 controller: _nameController,
                                 hintText: 'Nombre',
                                 prefixIcon: Icons.person_outline,
-                                validator: (value) => (value == null || value.isEmpty)
+                                // Solo valida que no esté vacío — el formato
+                                // lo valida NestJS y devuelve el mensaje
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
                                     ? 'Obligatorio'
                                     : null,
                               ),
@@ -80,106 +77,82 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 controller: _lastNameController,
                                 hintText: 'Apellido',
                                 prefixIcon: Icons.person_outline,
-                                validator: (value) => (value == null || value.isEmpty)
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
                                     ? 'Obligatorio'
                                     : null,
                               ),
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 12),
-
                         RoundedInputField(
                           controller: _emailController,
                           hintText: 'Correo electrónico',
                           prefixIcon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
-                            const pattern =
-                                r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@'
-                                r'((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|'
-                                r'(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
-                            return RegExp(pattern).hasMatch(value ?? '')
-                                ? null
-                                : 'El formato del correo no es válido';
+                            if (value == null || value.isEmpty) {
+                              return 'El correo es obligatorio';
+                            }
+                            if (!value.contains('@')) {
+                              return 'Ingrese un correo válido';
+                            }
+                            return null;
                           },
                         ),
-
                         const SizedBox(height: 12),
-
                         RoundedInputField(
                           controller: _phoneController,
                           hintText: 'Teléfono de contacto (+57...)',
                           prefixIcon: Icons.phone_outlined,
                           keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            const pattern = r'^\+[1-9]\d{0,2}\d{10}$';
-                            return RegExp(pattern).hasMatch(value ?? '')
-                                ? null
-                                : 'Número con prefijo internacional';
-                          },
+                          validator: (value) => (value == null || value.isEmpty)
+                              ? 'El teléfono es obligatorio'
+                              : null,
                         ),
-
                         const SizedBox(height: 12),
-
                         RoundedInputField(
                           controller: _emergencyPhoneController,
                           hintText: 'Tel. emergencia (opcional)',
                           prefixIcon: Icons.phone_in_talk_outlined,
                           keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return null;
-                            const pattern = r'^\+[1-9]\d{0,2}\d{10}$';
-                            return RegExp(pattern).hasMatch(value)
-                                ? null
-                                : 'Número con prefijo internacional';
-                          },
                         ),
-
                         const SizedBox(height: 12),
-
                         RoundedInputField(
                           controller: _passwordController,
                           hintText: 'Contraseña',
                           prefixIcon: Icons.lock_outline,
                           obscureText: true,
                           validator: (value) {
-                            if (value == null || value.length < 8) {
-                              return 'Mínimo 8 caracteres, una mayúscula y un número';
+                            if (value == null || value.isEmpty) {
+                              return 'La contraseña es obligatoria';
                             }
-                            if (!value.contains(RegExp(r'[A-Z]'))) {
-                              return 'Mínimo 8 caracteres, una mayúscula y un número';
-                            }
-                            if (!value.contains(RegExp(r'[0-9]'))) {
-                              return 'Mínimo 8 caracteres, una mayúscula y un número';
+                            if (value.length < 8) {
+                              return 'Mínimo 8 caracteres';
                             }
                             return null;
                           },
                         ),
-
                         const SizedBox(height: 12),
-
+                        // Esta validación se queda en Flutter porque es una
+                        // comparación local entre dos campos — NestJS no puede saberlo
                         RoundedInputField(
                           controller: _confirmPasswordController,
                           hintText: 'Confirmar contraseña',
                           prefixIcon: Icons.lock_outline,
                           obscureText: true,
-                          validator: (value) => (value != _passwordController.text)
+                          validator: (value) =>
+                              (value != _passwordController.text)
                               ? 'Las contraseñas no coinciden'
                               : null,
                         ),
-
                         const SizedBox(height: 24),
-
                         PrimaryButton(
                           label: 'REGISTRARSE',
                           onPressed: _handleRegister,
                         ),
-
                         const SizedBox(height: 12),
-
-                        // Enlace para volver al login
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -199,7 +172,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -213,16 +185,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
   }
 
+  // Solo arma el mapa y delega — sin validaciones de formato ni lógica
   Future<void> _handleRegister() async {
     FocusScope.of(context).unfocus();
 
-    if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Por favor, complete todos los campos correctamente')),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final userService = context.read<UserService>();
 
@@ -238,38 +205,35 @@ class _RegistrationPageState extends State<RegistrationPage> {
       userData['emergencyPhone'] = _emergencyPhoneController.text.trim();
     }
 
-    final String? errorMessage = await userService.createUser(userData);
+    final error = await userService.createUser(userData);
 
-    if (errorMessage == null) {
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('¡Registro exitoso! Por favor, inicia sesión.')),
-        );
-      }
+    if (!mounted) return;
+
+    if (error == null) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Registro exitoso! Por favor, inicia sesión.'),
+        ),
+      );
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
-      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
   }
 }
 
-/// Header específico de la pantalla de registro.
-/// Reutiliza AppLogoHeader y añade el subtítulo "Crear cuenta".
 class _RegistrationHeader extends StatelessWidget {
   const _RegistrationHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       children: [
-        const AppLogoHeader(avatarRadius: 70),
-        const SizedBox(height: 8),
-        const Text(
+        AppLogoHeader(avatarRadius: 70),
+        SizedBox(height: 8),
+        Text(
           'Crear cuenta',
           style: TextStyle(
             fontSize: 14,
