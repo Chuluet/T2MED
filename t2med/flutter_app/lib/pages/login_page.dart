@@ -43,68 +43,71 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           const DecorativeBackground(),
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Column(
                 children: [
-                  const Expanded(flex: 4, child: Center(child: AppLogoHeader())),
-                  Expanded(
-                    flex: 5,
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Solo muestra el campo — validación de formato
-                          // la hace NestJS y el error llega como String
-                          RoundedInputField(
-                            controller: _emailController,
-                            hintText: 'Correo electrónico',
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) =>
-                                (value == null || value.isEmpty)
-                                    ? 'El correo es obligatorio'
-                                    : null,
-                          ),
-                          const SizedBox(height: 14),
-                          RoundedInputField(
-                            controller: _passwordController,
-                            hintText: 'Contraseña',
-                            prefixIcon: Icons.lock_outline,
-                            obscureText: true,
-                            validator: (value) =>
-                                (value == null || value.isEmpty)
-                                    ? 'La contraseña es obligatoria'
-                                    : null,
-                          ),
-                          const SizedBox(height: 24),
-                          PrimaryButton(
-                            label: 'INICIAR SESIÓN',
-                            onPressed: _handleLogin,
-                          ),
-                          const SizedBox(height: 12),
-                          OutlinedActionButton(
-                            label: 'CREAR CUENTA',
-                            onPressed: () =>
-                                Navigator.pushNamed(context, 'register'),
-                          ),
-                          const SizedBox(height: 10),
-                          LinkTextButton(
-                            label: '¿Olvidaste tu contraseña?',
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const ForgotPasswordPage()),
+                  const SizedBox(height: 60),
+
+                  /// LOGO
+                  const Center(child: AppLogoHeader()),
+
+                  const SizedBox(height: 40),
+
+                  /// FORM
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        RoundedInputField(
+                          controller: _emailController,
+                          hintText: 'Correo electrónico',
+                          prefixIcon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) =>
+                              (value == null || value.isEmpty)
+                                  ? 'El correo es obligatorio'
+                                  : null,
+                        ),
+                        const SizedBox(height: 14),
+                        RoundedInputField(
+                          controller: _passwordController,
+                          hintText: 'Contraseña',
+                          prefixIcon: Icons.lock_outline,
+                          obscureText: true,
+                          validator: (value) =>
+                              (value == null || value.isEmpty)
+                                  ? 'La contraseña es obligatoria'
+                                  : null,
+                        ),
+                        const SizedBox(height: 24),
+                        PrimaryButton(
+                          label: 'INICIAR SESIÓN',
+                          onPressed: _handleLogin,
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedActionButton(
+                          label: 'CREAR CUENTA',
+                          onPressed: () =>
+                              Navigator.pushNamed(context, 'register'),
+                        ),
+                        const SizedBox(height: 10),
+                        LinkTextButton(
+                          label: '¿Olvidaste tu contraseña?',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ForgotPasswordPage(),
                             ),
-                            textColor: const Color(0xFF2C3E50),
-                            fontSize: 13,
                           ),
-                        ],
-                      ),
+                          textColor: const Color(0xFF2C3E50),
+                          fontSize: 13,
+                        ),
+                      ],
                     ),
                   ),
-                  const Expanded(flex: 1, child: SizedBox()),
+
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -114,8 +117,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Solo orquesta: valida que no estén vacíos, llama al service,
-  // muestra el resultado — sin tocar Firebase ni lógica de negocio
   Future<void> _handleLogin() async {
     FocusScope.of(context).unfocus();
 
