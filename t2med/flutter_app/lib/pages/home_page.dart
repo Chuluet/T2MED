@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
 import 'package:t2med/pages/profile_page.dart';
+import 'package:t2med/pages/calendar_page.dart';
 import 'package:t2med/services/med_service.dart';
 import 'package:t2med/services/appointment_service.dart';
 import 'package:t2med/services/notification_service.dart';
@@ -217,6 +218,23 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
+          // Botón calendario
+          GestureDetector(
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const CalendarPage())),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.2),
+              ),
+              child: const Icon(Icons.calendar_month_outlined,
+                  color: Colors.white, size: 22),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Botón perfil
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: GestureDetector(
@@ -225,7 +243,7 @@ class _HomePageState extends State<HomePage> {
               child: Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white,
                 ),
