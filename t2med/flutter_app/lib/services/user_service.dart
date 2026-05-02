@@ -9,29 +9,29 @@ class UserService extends ChangeNotifier {
   Map<String, dynamic>? _currentUserProfile;
   Map<String, dynamic>? get currentUserProfile => _currentUserProfile;
 
+  // ==================== Login ====================
   Future<String?> login(String email, String password) async {
-  try {
-    final credential = await FirebaseAuth.instance
-        .signInWithEmailAndPassword(email: email, password: password);
+    try {
+      final credential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
 
-    // Una vez autenticado, cargamos el perfil desde NestJS
-    final uid = credential.user!.uid;
-    await getUserProfile(uid);
+      final uid = credential.user!.uid;
+      await getUserProfile(uid);
 
-    return null; // null = éxito
-  } on FirebaseAuthException catch (e) {
-    return switch (e.code) {
-      'user-not-found'  => 'No existe una cuenta con este correo',
-      'wrong-password'  => 'Contraseña incorrecta',
-      'invalid-email'   => 'Correo inválido',
-      'user-disabled'   => 'Esta cuenta ha sido deshabilitada',
-      'invalid-credential' => 'Correo o contraseña incorrectos',
-      _ => 'Error al iniciar sesión',
-    };
-  } catch (e) {
-    return 'Error de red: $e';
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return switch (e.code) {
+        'user-not-found'     => 'No existe una cuenta con este correo',
+        'wrong-password'     => 'Contraseña incorrecta',
+        'invalid-email'      => 'Correo inválido',
+        'user-disabled'      => 'Esta cuenta ha sido deshabilitada',
+        'invalid-credential' => 'Correo o contraseña incorrectos',
+        _                    => 'Error al iniciar sesión',
+      };
+    } catch (e) {
+      return 'Error de red: $e';
+    }
   }
-}
 
   // ==================== Registro ====================
   Future<String?> createUser(Map<String, dynamic> body) async {
@@ -52,7 +52,10 @@ class UserService extends ChangeNotifier {
   // ==================== Perfil ====================
   Future<Map<String, dynamic>?> getUserProfile(String uid) async {
     try {
-      final response = await _authenticatedRequest('GET', '/users/profile/$uid');
+      final response = await _authenticatedRequest(
+        'GET',
+        '/users/profile/$uid',
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _currentUserProfile = data;
@@ -95,22 +98,6 @@ class UserService extends ChangeNotifier {
       if (response.statusCode == 200) return null;
       final resBody = jsonDecode(response.body);
       return resBody['message'] ?? 'Error enviando correo';
-    } catch (e) {
-      return 'Error de red: $e';
-    }
-  }
-
-  // ==================== Emergencia ====================
-  Future<String?> notifyEmergency(Map<String, dynamic> body) async {
-    try {
-      final response = await _authenticatedRequest(
-        'POST',
-        '/users/notify-emergency',
-        body: jsonEncode(body),
-      );
-      if (response.statusCode == 200) return null;
-      final resBody = jsonDecode(response.body);
-      return resBody['message'] ?? 'Error notificando emergencia';
     } catch (e) {
       return 'Error de red: $e';
     }
