@@ -3,6 +3,7 @@ export class User {
   name: string;
   lastName: string;
   email: string;
+  password: string;
   phone: string;
   emergencyPhone?: string | null;
   fcmToken?: string | null;
