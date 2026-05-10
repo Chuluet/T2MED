@@ -33,6 +33,31 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  // Problema 2 — A07:2025: el logout se delega completamente al UserService,
+  // que primero revoca el token en el backend y luego llama signOut().
+  // Se muestra un indicador de carga para evitar que el usuario toque algo
+  // mientras la petición HTTP está en vuelo.
+  Future<void> _handleLogout() async {
+    final userService = context.read<UserService>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    await userService.logout();
+
+    if (!context.mounted) return;
+
+    // Cerrar el diálogo de carga y navegar al login
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (_) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userService = context.watch<UserService>();
@@ -58,7 +83,6 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo T2MED (solo título, sin avatar)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: const [
@@ -137,16 +161,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         title: 'Cerrar sesión',
                         subtitle: 'Cerrar tu sesión',
                         isDestructive: true,
-                        onTap: () async {
-                          await FirebaseAuth.instance.signOut();
-                          if (!context.mounted) return;
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const LoginPage()),
-                            (_) => false,
-                          );
-                        },
+                        onTap: _handleLogout,
                       ),
                     ],
                   ),
