@@ -33,6 +33,24 @@ class UserService extends ChangeNotifier {
     }
   }
 
+  // ==================== Logout ====================
+  // Problema 2 — A07:2025: el token debe revocarse en el backend ANTES
+  // de llamar signOut(), porque después el currentUser ya no tiene token
+  // válido para autenticar la petición.
+  Future<void> logout() async {
+    try {
+      await _authenticatedRequest('POST', '/users/logout');
+    } catch (e) {
+      // Si el backend falla (ej. sin conexión), igual cerramos sesión
+      // localmente. El token expirará naturalmente en máx. 1 hora.
+      debugPrint('logout backend error: $e');
+    } finally {
+      _currentUserProfile = null;
+      notifyListeners();
+      await FirebaseAuth.instance.signOut();
+    }
+  }
+
   // ==================== Registro ====================
   Future<String?> createUser(Map<String, dynamic> body) async {
     try {
